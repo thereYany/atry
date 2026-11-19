@@ -25,6 +25,13 @@ spring:
     enabled: true
     # 内核表由各内核模块 jar 自带迁移；垂直应用在此基础上追加自己的 location
     locations: classpath:db/migration/platform,classpath:db/migration/identity,classpath:db/migration/payment,classpath:db/migration/llm,classpath:db/migration/metering
+  task:
+    scheduling:
+      # 6 个 @Scheduled 任务共享调度线程：Spring Boot 默认 pool.size=1，慢任务（查单/对账/告警）
+      # 会把其他定时任务全部堵住，导致告警与发件箱投递延迟；这里固定 4 个专属调度线程。
+      pool:
+        size: ${SCHEDULING_POOL_SIZE:4}
+      thread-name-prefix: scheduling-
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
