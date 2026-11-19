@@ -1,0 +1,229 @@
+{
+  "summary": {
+    "table_count": 16,
+    "cross_module_tables": [],
+    "multi_table_class_count": 3,
+    "multi_table_classes": [
+      "bootstrap:KernelDataInitializer",
+      "identity:RbacRepository",
+      "identity:UserInvitationMapper"
+    ],
+    "cross_db_multi_table_count": 0,
+    "cross_db_multi_table": {},
+    "composer_modules": [
+      "bootstrap"
+    ]
+  },
+  "tables": {
+    "t_admin_audit_log": {
+      "modules": [
+        "platform"
+      ],
+      "effective_modules": [
+        "platform"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": []
+    },
+    "t_alert_log": {
+      "modules": [
+        "platform"
+      ],
+      "effective_modules": [
+        "platform"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": []
+    },
+    "t_channel_bill": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": []
+    },
+    "t_payment_attempt": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 3,
+      "multi_table_classes": []
+    },
+    "t_payment_event": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 3,
+      "multi_table_classes": []
+    },
+    "t_payment_order": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 3,
+      "multi_table_classes": []
+    },
+    "t_payment_outbox": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
+      "multi_table_classes": []
+    },
+    "t_permission": {
+      "modules": [
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": [
+        "RbacRepository"
+      ]
+    },
+    "t_recon_diff": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
+      "multi_table_classes": []
+    },
+    "t_recon_task": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": []
+    },
+    "t_refund": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
+      "multi_table_classes": []
+    },
+    "t_role": {
+      "modules": [
+        "bootstrap",
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 3,
+      "multi_table_classes": [
+        "KernelDataInitializer",
+        "RbacRepository"
+      ]
+    },
+    "t_role_permission": {
+      "modules": [
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 3,
+      "multi_table_classes": [
+        "RbacRepository"
+      ]
+    },
+    "t_user": {
+      "modules": [
+        "bootstrap",
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 5,
+      "statements": 7,
+      "multi_table_classes": [
+        "KernelDataInitializer",
+        "UserInvitationMapper"
+      ]
+    },
+    "t_user_invitation": {
+      "modules": [
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
+      "multi_table_classes": [
+        "UserInvitationMapper"
+      ]
+    },
+    "t_user_role": {
+      "modules": [
+        "bootstrap",
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 4,
+      "multi_table_classes": [
+        "KernelDataInitializer",
+        "RbacRepository"
+      ]
+    }
+  }
+}

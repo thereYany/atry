@@ -1,0 +1,19 @@
+== Modules
+plantuml::components.puml[,,format=svg]
+
+== Platform
+plantuml::module-platform.puml[,,format=svg]
+include::module-platform.adoc[]
+
+== Contracts
+plantuml::module-contracts.puml[,,format=svg]
+include::module-contracts.adoc[]
+
+== Identity
+plantuml::module-identity.puml[,,format=svg]
+include::module-identity.adoc[]
+
+== Payment
+plantuml::module-payment.puml[,,format=svg]
+include::module-payment.adoc[]
+
