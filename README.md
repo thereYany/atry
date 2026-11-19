@@ -42,6 +42,29 @@ mvn -B -pl btry-app spring-boot:run
 
 核心接口：`POST /api/auth/login`、`/api/auth/me`、`/api/admin/users`、`/api/admin/roles`、`/api/admin/invitations`、`/api/admin/recon/*`；`POST /api/payments/alipay/notify`（provider=alipay 时启用的回调入口，公开路径）。
 
+### 演示：一条命令看完整「调用 → 用量 → 计价 → 结算 → 余额」
+
+宿主内置了 atry-llm / atry-metering 的演示端点（JWT 保护，可用 `ATRY_DEMO_ENABLED=false` 关闭）：
+
+```bash
+# 登录 → 一次 LLM 调用（返回内容/用量/本次成本/结算后余额）→ 余额 → 最近用量事件
+docs/bench/p6-demo.sh
+```
+
+响应里同时给出三段结果，便于确认链路一致：
+
+```json
+{"requestId":"demo13a0...ca92","provider":"mock","model":"mock-small",
+ "content":"mock reply: 用一句话介绍 atry 基座","finishReason":"stop","latencyMs":56,
+ "usage":{"inputTokens":4,"outputTokens":64,"totalTokens":68,"source":"PROVIDER"},
+ "cost":{"amount":0.000068,"currency":"CNY"},
+ "balance":{"balance":9.999790,"frozen":0.000000,"currency":"CNY"}}
+```
+
+- mock provider 默认零依赖；`DEEPSEEK_ENABLED=true` + `DEEPSEEK_API_KEY` 后可把 `model` 换成 `deepseek-flash` 走真实 provider；
+- 结构化日志 `LLM_EVENTS` 的 `llm.call.finished` 同步输出 `cost.amount_micros`，指标 `atry.llm.cost{tenant,model}` 同步累加；
+- 验收记录见 [docs/evidence/p6-demo.md](docs/evidence/p6-demo.md)。
+
 ## 测试
 
 ```bash

@@ -10,6 +10,8 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -33,27 +35,27 @@ public class LlmEventLogger {
     }
 
     public void started(LlmRequest request, String providerId) {
-        emit("llm.call.started", request, envelope(request, providerId, null, null, null, null, "STARTED"));
+        emit("llm.call.started", request, envelope(request, providerId, null, null, null, null, "STARTED", null));
     }
 
     public void attemptFailed(LlmRequest request, String providerId, LlmError error, int attempt,
                               boolean willRetry, long backoffMs) {
-        Map<String, Object> event = envelope(request, providerId, null, null, error, null, "FAILED");
+        Map<String, Object> event = envelope(request, providerId, null, null, error, null, "FAILED", null);
         event.put("attempt", Map.of("number", attempt, "will_retry", willRetry, "backoff_ms", backoffMs));
         emit("llm.attempt.failed", request, event);
     }
 
     public void finished(LlmRequest request, String providerId, LlmResponse response, LlmUsage usage,
-                         long latencyMs, int attempts, boolean stream) {
-        Map<String, Object> event = envelope(request, providerId, response, usage, null, latencyMs, "SUCCESS");
+                         long latencyMs, int attempts, boolean stream, BigDecimal cost) {
+        Map<String, Object> event = envelope(request, providerId, response, usage, null, latencyMs, "SUCCESS", cost);
         event.put("attempt_count", attempts);
         event.put("stream", stream);
         emit("llm.call.finished", request, event);
     }
 
     public void failed(LlmRequest request, String providerId, LlmError error, long latencyMs,
-                       int attempts, boolean stream) {
-        Map<String, Object> event = envelope(request, providerId, null, null, error, latencyMs, "FAILED");
+                       int attempts, boolean stream, BigDecimal cost) {
+        Map<String, Object> event = envelope(request, providerId, null, null, error, latencyMs, "FAILED", cost);
         event.put("attempt_count", attempts);
         event.put("stream", stream);
         emit("llm.call.failed", request, event);
@@ -72,7 +74,8 @@ public class LlmEventLogger {
     }
 
     private Map<String, Object> envelope(LlmRequest request, String providerId, LlmResponse response,
-                                         LlmUsage usage, LlmError error, Long latencyMs, String status) {
+                                         LlmUsage usage, LlmError error, Long latencyMs, String status,
+                                         BigDecimal cost) {
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("event_name", "llm.call");
         event.put("event_version", 1);
@@ -116,7 +119,7 @@ public class LlmEventLogger {
             outcome.put("billable", error.billable());
         }
         event.put("outcome", outcome);
-        event.put("cost", Map.of("amount_micros", 0, "currency", "CNY"));
+        event.put("cost", costGroup(cost));
         event.put("sampling", Map.of("sampled", true));
         event.put("content", Map.of("content_captured", false));
         return event;
@@ -134,6 +137,16 @@ public class LlmEventLogger {
 
     private String toJson(Map<String, Object> event) {
         return objectMapper.writeValueAsString(event);
+    }
+
+    /** 成本分组：金额 6 位小数（与计量金额精度一致），并给出 micros 便于聚合。 */
+    private Map<String, Object> costGroup(BigDecimal cost) {
+        BigDecimal amount = (cost == null ? BigDecimal.ZERO : cost).setScale(6, RoundingMode.CEILING);
+        Map<String, Object> group = new LinkedHashMap<>();
+        group.put("currency", "CNY");
+        group.put("amount", amount);
+        group.put("amount_micros", amount.movePointRight(6).longValueExact());
+        return group;
     }
 
     private String truncate(String value) {

@@ -145,10 +145,13 @@ public class LlmService implements LlmOperations {
                             new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
                                     request.userId(), provider.id(), response.modelServed(), usage,
                                     latencyMs, Instant.now()));
-                    settleBudget(reservationId, request, usage);
+                    BigDecimal actual = actualCostOrNull(request, usage);
+                    settleBudget(reservationId, request.requestId(), actual);
                     settled = true;
-                    events.finished(request, provider.id(), response, usage, latencyMs, attempts, false);
+                    BigDecimal cost = actual == null ? BigDecimal.ZERO : actual;
+                    events.finished(request, provider.id(), response, usage, latencyMs, attempts, false, cost);
                     metrics.success(provider.id(), request.model(), false, latencyMs, usage, null);
+                    metrics.cost(request.tenantId(), request.model(), cost);
                     return response;
                 } catch (LlmException e) {
                     last = e;
@@ -175,7 +178,7 @@ public class LlmService implements LlmOperations {
         } catch (LlmException e) {
             long latencyMs = System.currentTimeMillis() - startedAt;
             callWriter.writeFailure(failureRecord(request, provider.id(), e.error(), latencyMs, attempts));
-            events.failed(request, provider.id(), e.error(), latencyMs, attempts, false);
+            events.failed(request, provider.id(), e.error(), latencyMs, attempts, false, BigDecimal.ZERO);
             metrics.failure(provider.id(), request.model(), false, e.error(), latencyMs);
             throw e;
         } catch (RuntimeException e) {
@@ -183,7 +186,7 @@ public class LlmService implements LlmOperations {
             LlmError error = new LlmError(LlmErrorCategory.INTERNAL, "UNEXPECTED", false, false,
                     "LLM 调用内部错误：" + e.getClass().getSimpleName());
             callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, attempts));
-            events.failed(request, provider.id(), error, latencyMs, attempts, false);
+            events.failed(request, provider.id(), error, latencyMs, attempts, false, BigDecimal.ZERO);
             metrics.failure(provider.id(), request.model(), false, error, latencyMs);
             throw new LlmException(error, e);
         } finally {
@@ -232,9 +235,11 @@ public class LlmService implements LlmOperations {
                         new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
                                 request.userId(), provider.id(), request.model(), usage, latencyMs, Instant.now()));
                 persisted = true;
+                BigDecimal streamCost = pricedCostOrZero(request, usage);
                 events.finished(request, provider.id(), responseOf(outcome, request.model()), usage,
-                        latencyMs, 1, true);
+                        latencyMs, 1, true, streamCost);
                 metrics.success(provider.id(), request.model(), true, latencyMs, usage, outcome.ttftMs());
+                metrics.cost(request.tenantId(), request.model(), streamCost);
                 return;
             }
             LlmError error = outcome.error();
@@ -244,14 +249,15 @@ public class LlmService implements LlmOperations {
             callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 1,
                     outcome.usage(), status));
             persisted = true;
-            events.failed(request, provider.id(), error, latencyMs, 1, true);
+            events.failed(request, provider.id(), error, latencyMs, 1, true,
+                    pricedCostOrZero(request, outcome.usage()));
             metrics.failure(provider.id(), request.model(), true, error, latencyMs);
             throw new LlmException(error);
         } catch (LlmException e) {
             if (!persisted) {
                 long latencyMs = System.currentTimeMillis() - startedAt;
                 callWriter.writeFailure(failureRecord(request, provider.id(), e.error(), latencyMs, 0));
-                events.failed(request, provider.id(), e.error(), latencyMs, 0, true);
+                events.failed(request, provider.id(), e.error(), latencyMs, 0, true, BigDecimal.ZERO);
                 metrics.failure(provider.id(), request.model(), true, e.error(), latencyMs);
             }
             throw e;
@@ -262,7 +268,7 @@ public class LlmService implements LlmOperations {
             if (!persisted) {
                 callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 0));
             }
-            events.failed(request, provider.id(), error, latencyMs, 0, true);
+            events.failed(request, provider.id(), error, latencyMs, 0, true, BigDecimal.ZERO);
             metrics.failure(provider.id(), request.model(), true, error, latencyMs);
             throw new LlmException(error, e);
         } finally {
@@ -292,16 +298,21 @@ public class LlmService implements LlmOperations {
         }
     }
 
-    private void settleBudget(String reservationId, LlmRequest request, LlmUsage usage) {
+    private void settleBudget(String reservationId, String requestId, BigDecimal actual) {
         if (reservationId == null) {
             return;
         }
+        if (actual == null) {
+            // 价格不可用时不能按 0 结算（会释放预扣但不计费），留给过期回收/对账兜底
+            log.warn("llm.billing.settle_skipped requestId={} reservationId={} reason=price_unavailable",
+                    requestId, reservationId);
+            return;
+        }
         try {
-            BigDecimal actual = actualCost(request, usage);
-            metering.settle(new SettleCommand(reservationId, actual, BILLING_CURRENCY, request.requestId()));
+            metering.settle(new SettleCommand(reservationId, actual, BILLING_CURRENCY, requestId));
         } catch (RuntimeException e) {
             log.warn("llm.billing.settle_failed requestId={} reservationId={} error={}",
-                    request.requestId(), reservationId, e.getClass().getSimpleName());
+                    requestId, reservationId, e.getClass().getSimpleName());
         }
     }
 
@@ -312,6 +323,26 @@ public class LlmService implements LlmOperations {
             log.warn("llm.billing.release_failed reservationId={} error={}",
                     reservationId, e.getClass().getSimpleName());
         }
+    }
+
+    /** 结算/成本计算；价格缺失返回 null（不按 0 计费），由 settleBudget 决定跳过结算。 */
+    private BigDecimal actualCostOrNull(LlmRequest request, LlmUsage usage) {
+        try {
+            return actualCost(request, usage);
+        } catch (RuntimeException e) {
+            log.warn("llm.billing.price_unavailable requestId={} model={} error={}",
+                    request.requestId(), request.model(), e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** 观测用成本：价格缺失时退化为 0，不阻塞调用结果返回。 */
+    private BigDecimal pricedCostOrZero(LlmRequest request, LlmUsage usage) {
+        if (usage == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal cost = actualCostOrNull(request, usage);
+        return cost == null ? BigDecimal.ZERO : cost;
     }
 
     private BigDecimal estimateBudgetCost(LlmRequest request) {

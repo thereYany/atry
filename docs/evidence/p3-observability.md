@@ -63,4 +63,6 @@
 - 采样当前固定 `sampled=true`，采样率/内容审计开关在 P4/P5 接入；
 - OTel exporter 在部署层接入（本地 JFR/控制台可验证 span 字段）；
 - Prometheus 看板/告警规则在 P5 用压测数据校准；
-- `@BudgetGuard`、成本指标（cost）待 P4 计量计费联动。
+- 成本联动已于 P6 补齐：`llm.call.finished` 输出 cost（amount / amount_micros），`atry.llm.cost` 指标按 tenant×model 累加
+  （见 [p6-demo](p6-demo.md)）；
+- `@BudgetGuard` 仍未实现（依赖 P4，已具备条件）。

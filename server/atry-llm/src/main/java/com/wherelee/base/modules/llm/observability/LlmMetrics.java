@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 
 /** LLM 指标（低基数标签：provider/model/status，禁止放 tenant/user/request/prompt）。 */
@@ -53,6 +54,20 @@ public class LlmMetrics {
                 .tag("provider", provider)
                 .tag("outcome", attempted ? "attempted" : "budget_exhausted")
                 .register(registry).increment();
+    }
+
+    /**
+     * 成本归因：按 tenant × model 累加（token → 金额在 llm 侧用 metering 价格路径换算）。
+     * tenant 只出现在成本类指标上，其余指标保持低基数。
+     */
+    public void cost(long tenantId, String model, BigDecimal cost) {
+        if (cost == null || cost.signum() <= 0) {
+            return;
+        }
+        Counter.builder("atry.llm.cost")
+                .tag("tenant", Long.toString(tenantId))
+                .tag("model", model == null ? "unknown" : model)
+                .register(registry).increment(cost.doubleValue());
     }
 
     public void rejected(String scope) {

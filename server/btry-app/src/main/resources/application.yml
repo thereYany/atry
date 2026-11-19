@@ -178,6 +178,12 @@ logging:
     com.wherelee.base: info
 
 atry:
+  demo:
+    enabled: ${ATRY_DEMO_ENABLED:true}
+    currency: ${ATRY_DEMO_CURRENCY:CNY}
+    initial-balance: ${ATRY_DEMO_INITIAL_BALANCE:10.000000}
+    default-model: ${ATRY_DEMO_MODEL:mock-small}
+    default-max-tokens: ${ATRY_DEMO_MAX_TOKENS:128}
   llm:
     mock:
       delay-ms: ${ATRY_LLM_MOCK_DELAY_MS:0}

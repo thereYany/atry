@@ -4,6 +4,7 @@ import com.wherelee.base.modules.contracts.llm.LlmError;
 import com.wherelee.base.modules.contracts.llm.LlmErrorCategory;
 import com.wherelee.base.modules.contracts.llm.LlmUsage;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +23,10 @@ class LlmMetricsTest {
         assertThat(registry.get("atry.llm.duration").tag("stream", "true").timer().count()).isEqualTo(1);
         assertThat(registry.get("atry.llm.tokens").tag("token_type", "input").counter().count()).isEqualTo(10);
         assertThat(registry.get("atry.llm.ttft").timer().count()).isEqualTo(1);
+
+        metrics.cost(7L, "mock-small", new BigDecimal("0.000068"));
+        assertThat(registry.get("atry.llm.cost").tag("tenant", "7").tag("model", "mock-small")
+                .counter().count()).isEqualTo(0.000068, org.assertj.core.data.Offset.offset(1e-12));
     }
 
     @Test

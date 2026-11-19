@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +35,8 @@ class LlmEventLoggerTest {
                     "stop", new LlmUsage(2, 3, 0, 0, 0, LlmUsage.Source.PROVIDER), false);
 
             events.finished(request, "mock", response,
-                    new LlmUsage(2, 3, 0, 0, 0, LlmUsage.Source.PROVIDER), 120, 1, false);
+                    new LlmUsage(2, 3, 0, 0, 0, LlmUsage.Source.PROVIDER), 120, 1, false,
+                    new BigDecimal("0.000068"));
 
             assertThat(appender.list).hasSize(1);
             String json = appender.list.get(0).getFormattedMessage();
@@ -46,6 +48,8 @@ class LlmEventLoggerTest {
             assertThat(node.get("usage").get("input_tokens").asLong()).isEqualTo(2);
             assertThat(node.get("latency").get("total_ms").asLong()).isEqualTo(120);
             assertThat(node.get("outcome").get("status").asString()).isEqualTo("SUCCESS");
+            assertThat(node.get("cost").get("currency").asString()).isEqualTo("CNY");
+            assertThat(node.get("cost").get("amount_micros").asLong()).isEqualTo(68);
             assertThat(node.get("content").get("content_captured").asBoolean()).isFalse();
             assertThat(json).doesNotContain("secret prompt").doesNotContain("secret response");
         } finally {
