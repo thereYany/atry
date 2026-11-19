@@ -10,12 +10,14 @@ import com.wherelee.base.modules.contracts.metering.UsageCommand;
 import com.wherelee.base.modules.contracts.metering.UsageQuery;
 import com.wherelee.base.modules.platform.common.BizException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -114,6 +116,45 @@ class MeteringCoreIntegrationTest extends KernelIntegrationTestSupport {
             }
             assertThat(success).isEqualTo(1);
             assertFrozen("8");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("多实例等价并发预扣：8 个独立事务同时抢余额 10 的账户，每个预扣 3，只能成功 3 次")
+    void concurrentReserveAcrossInstancesDoesNotOversell() throws Exception {
+        int threads = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Callable<Boolean>> tasks = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                final int index = i;
+                tasks.add(() -> {
+                    start.await();
+                    try {
+                        metering.reserve(new ReserveCommand("res-multi-" + index, subject,
+                                new BigDecimal("3"), "CNY", Instant.now().plusSeconds(3600),
+                                "req-multi-" + index));
+                        return true;
+                    } catch (BizException e) {
+                        return false;
+                    }
+                });
+            }
+            List<Future<Boolean>> futures = tasks.stream().map(pool::submit).toList();
+            start.countDown();
+            int success = 0;
+            for (Future<Boolean> future : futures) {
+                if (future.get()) {
+                    success++;
+                }
+            }
+            assertThat(success).as("并发预扣成功次数").isEqualTo(3);
+            assertThat(count("t_metering_reservation",
+                    "reservation_id LIKE ? AND status = 'PENDING'", "res-multi-%")).isEqualTo(3);
+            assertFrozen("9");
         } finally {
             pool.shutdownNow();
         }

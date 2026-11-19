@@ -1,7 +1,7 @@
 # P2 验收记录：可靠性治理（P2a/P2b，2026-11-19）
 
 > 范围：超时、截止时间、单点重试、重试预算、熔断（失败率+慢调用率）、多维限流、bulkhead、流式两阶段超时/取消/部分用量。
-> P2 已完成；Redis 分布式限流、路由/fallback、指标留到后续阶段。
+> P2 已完成；Redis 分布式限流已在 P7-① 补齐（见 [p7-redis-ratelimit](p7-redis-ratelimit.md)）；路由/fallback 仍留到后续阶段。
 
 ## 1. 已实现
 
@@ -53,7 +53,7 @@ llm.call.failed requestId=req-p2-c3 provider=mock model=mock-fail category=UPSTR
 ## 3. 已知限制 / 后续
 
 - 流式**首 token 前暂未做重试/换 provider**（当前直接失败；P3/P5 补）；已 committed 后不重试。
-- 多实例：熔断/重试预算/限流目前进程内；Redis 共享状态 + 本地兜底在 P4/多实例阶段。
+- 多实例：熔断/重试预算目前进程内；限流已在 P7-① 改为 Redis 共享令牌桶 + 本地兜底。
 - 路由/fallback：P2 单 provider；路由链、冷却、降级在 P3/P5。
 - 指标：重试/熔断/限流指标在 P3 接入。
 - `Retry-After`/慢调用阈值需真实 provider 数据校准（P5）。

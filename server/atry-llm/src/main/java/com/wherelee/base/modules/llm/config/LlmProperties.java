@@ -29,6 +29,12 @@ public record LlmProperties(
                           long slowCallMs, int slowCallRateThreshold) {
     }
 
-    public record RateLimit(int tenantRpm, int providerRpm, int maxInFlight) {
+    /**
+     * 限流配置。
+     *
+     * <p>{@code backend}：{@code auto}（默认，有 Redis 时多实例共享）/{@code redis}/{@code local}。
+     * Redis 不可用时自动降级为每实例本地令牌桶，并记 {@code infra.redis.fallback} 指标。</p>
+     */
+    public record RateLimit(int tenantRpm, int providerRpm, int maxInFlight, String backend) {
     }
 }

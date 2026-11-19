@@ -35,6 +35,6 @@ class LlmRateLimiterTest {
                 new LlmProperties.Timeouts(5000, 45000, 60000, 600000),
                 new LlmProperties.Retry(3, 300, 2000, 0.2),
                 new LlmProperties.Circuit(50, 20, 30000, 5, 0, 60),
-                new LlmProperties.RateLimit(tenantRpm, providerRpm, inFlight)));
+                new LlmProperties.RateLimit(tenantRpm, providerRpm, inFlight, "local")));
     }
 }

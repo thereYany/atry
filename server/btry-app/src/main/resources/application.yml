@@ -213,6 +213,8 @@ atry:
       slow-call-ms: ${ATRY_LLM_CIRCUIT_SLOW_CALL_MS:0}
       slow-call-rate-threshold: ${ATRY_LLM_CIRCUIT_SLOW_CALL_RATE:60}
     rate-limit:
+      # auto=有 Redis 时多实例共享令牌桶；local=仅本机；redis=强制共享（Redis 故障仍降级本地）
+      backend: ${ATRY_LLM_RATE_LIMIT_BACKEND:auto}
       tenant-rpm: ${ATRY_LLM_TENANT_RPM:600}
       provider-rpm: ${ATRY_LLM_PROVIDER_RPM:6000}
       max-in-flight: ${ATRY_LLM_MAX_IN_FLIGHT:100}

@@ -16,7 +16,7 @@ class LlmCircuitBreakerTest {
             new LlmProperties.Timeouts(5000, 45000, 60000, 600000),
             new LlmProperties.Retry(3, 300, 2000, 0.2),
             new LlmProperties.Circuit(50, 2, 100, 2, 0, 60),
-            new LlmProperties.RateLimit(600, 6000, 100)));
+            new LlmProperties.RateLimit(600, 6000, 100, "local")));
 
     @Test
     void opensAfterThresholdAndRecoversAfterOpenWindow() throws InterruptedException {
@@ -59,7 +59,7 @@ class LlmCircuitBreakerTest {
                 new LlmProperties.Timeouts(5000, 45000, 60000, 600000),
                 new LlmProperties.Retry(3, 300, 2000, 0.2),
                 new LlmProperties.Circuit(50, 2, 1000, 2, 10, 50),
-                new LlmProperties.RateLimit(600, 6000, 100)));
+                new LlmProperties.RateLimit(600, 6000, 100, "local")));
 
         slowBreaker.recordSuccess("mock:mock-slow", 50);
         slowBreaker.recordSuccess("mock:mock-slow", 50);
