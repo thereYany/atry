@@ -10,16 +10,24 @@ import com.wherelee.base.modules.llm.config.LlmProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * mock provider：确定性 token 数 + 可配置延迟/失败模型，供测试与压测使用，不依赖外网。
+ * mock provider：确定性 token 数 + 可配置延迟/失败/超时/抖动模型，供测试与压测使用，不依赖外网。
  *
- * <p>输入 token 估算 = 消息字符数 / 4 向上取整；输出 token 由 requestId 哈希决定且不超过 maxTokens。</p>
+ * <ul>
+ *   <li>默认：成功，输入 token = 字符数/4 向上取整，输出 token 由 requestId 哈希决定；</li>
+ *   <li>{@code failureModel}：抛 5xx（可重试）；</li>
+ *   <li>{@code slowModel}：sleep {@code slowDelayMs}，用于超时/舱壁测试；</li>
+ *   <li>{@code flakyModel}：同一 requestId 首次失败、重试成功，用于验证单点重试。</li>
+ * </ul>
  */
 @Component
 public class MockLlmProvider implements LlmProvider {
 
     private final LlmProperties.Mock properties;
+    private final ConcurrentHashMap<String, AtomicInteger> flakyAttempts = new ConcurrentHashMap<>();
 
     public MockLlmProvider(LlmProperties properties) {
         this.properties = properties.mock();
@@ -37,18 +45,24 @@ public class MockLlmProvider implements LlmProvider {
 
     @Override
     public LlmResponse invoke(LlmRequest request) {
-        if (properties.delayMs() > 0) {
-            try {
-                Thread.sleep(properties.delayMs());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new LlmException(new LlmError(LlmErrorCategory.CANCELLED, null, false, false,
-                        "mock provider 被中断"), e);
-            }
+        String model = request.model();
+        if (model.equals(properties.slowModel())) {
+            sleep(properties.slowDelayMs());
+        } else if (properties.delayMs() > 0) {
+            sleep(properties.delayMs());
         }
-        if (request.model().equals(properties.failureModel())) {
+        if (model.equals(properties.failureModel())) {
             throw new LlmException(new LlmError(LlmErrorCategory.UPSTREAM_5XX, "MOCK_FAILURE",
-                    true, false, "mock provider 模拟失败：" + request.model()));
+                    true, false, "mock provider 模拟失败：" + model));
+        }
+        if (model.equals(properties.flakyModel())) {
+            int attempt = flakyAttempts.computeIfAbsent(request.requestId(), ignored -> new AtomicInteger())
+                    .incrementAndGet();
+            if (attempt == 1) {
+                throw new LlmException(new LlmError(LlmErrorCategory.UPSTREAM_5XX, "MOCK_FLAKY",
+                        true, false, "mock provider 首次调用失败（模拟抖动）"));
+            }
+            flakyAttempts.remove(request.requestId());
         }
         List<String> contents = request.messages().stream().map(m -> m.content() == null ? "" : m.content()).toList();
         int inputTokens = estimateInputTokens(contents);
@@ -56,12 +70,22 @@ public class MockLlmProvider implements LlmProvider {
         int outputTokens = Math.max(1, Math.min(cap, 20 + Math.floorMod(request.requestId().hashCode(), 100)));
         String first = contents.isEmpty() ? "" : contents.get(0);
         String content = "mock reply: " + (first.length() > 80 ? first.substring(0, 80) : first);
-        return new LlmResponse(request.requestId(), id(), request.model(), content, "stop",
+        return new LlmResponse(request.requestId(), id(), model, content, "stop",
                 new LlmUsage(inputTokens, outputTokens, 0, 0, 0, LlmUsage.Source.PROVIDER), false);
     }
 
     static int estimateInputTokens(List<String> contents) {
         int chars = contents.stream().mapToInt(s -> s == null ? 0 : s.length()).sum();
         return Math.max(1, (chars + 3) / 4);
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new LlmException(new LlmError(LlmErrorCategory.CANCELLED, null, false, false,
+                    "mock provider 被中断"), e);
+        }
     }
 }
