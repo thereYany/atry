@@ -1,12 +1,14 @@
 {
   "summary": {
-    "table_count": 26,
+    "table_count": 30,
     "cross_module_tables": [],
-    "multi_table_class_count": 4,
+    "multi_table_class_count": 6,
     "multi_table_classes": [
       "bootstrap:KernelDataInitializer",
       "identity:RbacRepository",
       "identity:UserInvitationMapper",
+      "metering:MeteringBillingStore",
+      "metering:MeteringStore",
       "payment:PaymentRepository"
     ],
     "cross_db_multi_table_count": 0,
@@ -53,44 +55,94 @@
       "multi_table_classes": []
     },
     "t_llm_call_record": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
+      "modules": [
+        "llm"
+      ],
+      "effective_modules": [
+        "llm"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
       "multi_table_classes": []
     },
     "t_llm_outbox": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
+      "modules": [
+        "llm"
+      ],
+      "effective_modules": [
+        "llm"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
       "multi_table_classes": []
     },
     "t_metering_account": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
-      "multi_table_classes": []
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 4,
+      "multi_table_classes": [
+        "MeteringBillingStore"
+      ]
     },
     "t_metering_charge": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 2,
+      "multi_table_classes": [
+        "MeteringBillingStore"
+      ]
+    },
+    "t_metering_invoice": {
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
+      "multi_table_classes": []
+    },
+    "t_metering_invoice_item": {
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
       "multi_table_classes": []
     },
     "t_metering_ledger": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
-      "multi_table_classes": []
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 2,
+      "multi_table_classes": [
+        "MeteringBillingStore"
+      ]
     },
     "t_metering_meter": {
       "modules": [],
@@ -101,36 +153,82 @@
       "multi_table_classes": []
     },
     "t_metering_price_book": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
-      "multi_table_classes": []
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": [
+        "MeteringStore"
+      ]
     },
     "t_metering_rate_card": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": [
+        "MeteringStore"
+      ]
+    },
+    "t_metering_recon_diff": {
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": []
+    },
+    "t_metering_recon_run": {
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
       "multi_table_classes": []
     },
     "t_metering_reservation": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 4,
       "multi_table_classes": []
     },
     "t_metering_usage_event": {
-      "modules": [],
-      "effective_modules": [],
-      "module_count": 0,
-      "class_count": 0,
-      "statements": 0,
-      "multi_table_classes": []
+      "modules": [
+        "metering"
+      ],
+      "effective_modules": [
+        "metering"
+      ],
+      "module_count": 1,
+      "class_count": 2,
+      "statements": 3,
+      "multi_table_classes": [
+        "MeteringBillingStore"
+      ]
     },
     "t_payment_attempt": {
       "modules": [

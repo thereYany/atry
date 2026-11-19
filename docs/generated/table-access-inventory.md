@@ -1,7 +1,7 @@
 # 表访问清单（自动生成）
 
 - 生成脚本：`tools/table_access_inventory.py`
-- 表数量：26；有代码访问的表：16
+- 表数量：30；有代码访问的表：29
 
 ## 1. 汇总
 
@@ -10,16 +10,20 @@
 | `t_admin_audit_log` | platform/audit | 1 | 1 | 0 | AdminAuditRepository | — |
 | `t_alert_log` | platform/alert | 1 | 1 | 0 | AlertLogRepository | — |
 | `t_channel_bill` | payment | 1 | 1 | 0 | ReconRepository | — |
-| `t_llm_call_record` | llm | 0 | 0 | 0 | — | — |
-| `t_llm_outbox` | llm | 0 | 0 | 0 | — | — |
-| `t_metering_account` | metering | 0 | 0 | 0 | — | — |
-| `t_metering_charge` | metering | 0 | 0 | 0 | — | — |
-| `t_metering_ledger` | metering | 0 | 0 | 0 | — | — |
+| `t_llm_call_record` | llm | 1 | 1 | 0 | LlmCallRepository | LlmCallRepository |
+| `t_llm_outbox` | llm | 1 | 1 | 0 | LlmOutboxRepository | LlmOutboxRepository |
+| `t_metering_account` | metering | 1 | 2 | 1 | MeteringBillingStore, MeteringStore | MeteringBillingStore, MeteringStore |
+| `t_metering_charge` | metering | 1 | 2 | 1 | MeteringStore | MeteringBillingStore |
+| `t_metering_invoice` | metering | 1 | 1 | 0 | MeteringBillingStore | MeteringBillingStore |
+| `t_metering_invoice_item` | metering | 1 | 1 | 0 | MeteringBillingStore | MeteringBillingStore |
+| `t_metering_ledger` | metering | 1 | 2 | 1 | MeteringStore | MeteringBillingStore |
 | `t_metering_meter` | metering | 0 | 0 | 0 | — | — |
-| `t_metering_price_book` | metering | 0 | 0 | 0 | — | — |
-| `t_metering_rate_card` | metering | 0 | 0 | 0 | — | — |
-| `t_metering_reservation` | metering | 0 | 0 | 0 | — | — |
-| `t_metering_usage_event` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_price_book` | metering | 1 | 1 | 1 | — | MeteringStore |
+| `t_metering_rate_card` | metering | 1 | 1 | 1 | — | MeteringStore |
+| `t_metering_recon_diff` | metering | 1 | 1 | 0 | MeteringBillingStore | — |
+| `t_metering_recon_run` | metering | 1 | 1 | 0 | MeteringBillingStore | — |
+| `t_metering_reservation` | metering | 1 | 2 | 0 | MeteringBillingStore, MeteringStore | MeteringBillingStore, MeteringStore |
+| `t_metering_usage_event` | metering | 1 | 2 | 1 | MeteringStore | MeteringBillingStore, MeteringStore |
 | `t_payment_attempt` | payment | 1 | 2 | 0 | PaymentRepository | MockChannelBillProvider, PaymentRepository |
 | `t_payment_event` | payment | 1 | 1 | 0 | PaymentRepository | PaymentRepository |
 | `t_payment_order` | payment | 1 | 3 | 1 | PaymentOrderRepository | PaymentOrderRepository, PaymentRepository, ReconRepository |
@@ -59,8 +63,10 @@
 | bootstrap | `KernelDataInitializer` | `t_role` / `t_user` / `t_user_role` | server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java |
 | identity | `RbacRepository` | `t_permission` / `t_role` / `t_role_permission` / `t_user_role` | server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java |
 | identity | `UserInvitationMapper` | `t_user` / `t_user_invitation` | server/btry-identity/src/main/resources/mapper/UserInvitationMapper.xml |
+| metering | `MeteringBillingStore` | `t_metering_account` / `t_metering_charge` / `t_metering_ledger` / `t_metering_usage_event` | server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringBillingStore.java |
+| metering | `MeteringStore` | `t_metering_price_book` / `t_metering_rate_card` | server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java |
 | payment | `PaymentRepository` | `t_payment_order` / `t_payment_outbox` | server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java |
 
 ## 4. 未被代码访问的表
 
-`t_llm_call_record`、`t_llm_outbox`、`t_metering_account`、`t_metering_charge`、`t_metering_ledger`、`t_metering_meter`、`t_metering_price_book`、`t_metering_rate_card`、`t_metering_reservation`、`t_metering_usage_event`
+`t_metering_meter`
