@@ -28,7 +28,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
-    mem_limit: ${MYSQL_MEM_LIMIT:-512m}
+    # 768m: 实测 512m 时 InnoDB buffer pool+连接等已用 76–81%，满负载余量不足
+    mem_limit: ${MYSQL_MEM_LIMIT:-768m}
     logging: *default-logging
 
   redis:
@@ -51,7 +52,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
-    mem_limit: ${REDIS_MEM_LIMIT:-160m}
+    # 192m: maxmemory 128mb + 碎片/RDB 缓冲；160m 在满负载时临界
+    mem_limit: ${REDIS_MEM_LIMIT:-192m}
     logging: *default-logging
 
   backend:
@@ -92,8 +94,11 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       LOG_FILE: /app/logs/atry.log
-      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=70 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -Duser.timezone=Asia/Shanghai -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M}
+      # 堆 = mem_limit × 50%，固定非堆约 221m + jar/映射约 70m；768m 下 MaxHeapSize=384MiB、余量约 93m
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=50 -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -Duser.timezone=Asia/Shanghai -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M}
     ports:
+      # 8084 = 业务端口（外部/nginx 轻量存活探针用 /api/health，不查 DB/Redis）；
+      # 9091 = 管理端口（仅容器 readiness 用 /actuator/health/readiness，会查 db/redis）
       - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-8084}:8084"
       - "${MANAGEMENT_BIND:-127.0.0.1}:${MANAGEMENT_PORT:-9091}:9091"
     volumes:
@@ -104,12 +109,14 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
+      # 容器 readiness 口径：9091 /actuator/health/readiness（含 db/redis 依赖）
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9091/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
       interval: 10s
       timeout: 5s
       retries: 30
       start_period: 40s
-    mem_limit: ${BACKEND_MEM_LIMIT:-640m}
+    # 768m = 384m 堆（50%）+ 非堆约 221m + 映射约 70m，实测 RSS 约 375m、余量约 93m
+    mem_limit: ${BACKEND_MEM_LIMIT:-768m}
     logging: *default-logging
 
 volumes:

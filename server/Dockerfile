@@ -20,8 +20,9 @@ COPY atry-app/src ./atry-app/src
 RUN mvn -B -ntp -DskipTests package
 
 FROM eclipse-temurin:21-jdk-alpine
+# 堆 = mem_limit × 50%（compose 默认 768m → MaxHeapSize=384MiB），固定非堆约 221m + 映射约 70m
 ENV TZ=Asia/Shanghai \
-    JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -Duser.timezone=Asia/Shanghai -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M"
+    JAVA_OPTS="-XX:MaxRAMPercentage=50 -XX:MaxDirectMemorySize=64m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -Duser.timezone=Asia/Shanghai -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M"
 WORKDIR /app
 RUN addgroup -S app && adduser -S -G app app && mkdir -p /app/logs && chown -R app:app /app
 COPY --chown=app:app --from=build /workspace/atry-app/target/atry-app-*-exec.jar /app/app.jar
