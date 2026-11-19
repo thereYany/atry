@@ -4,10 +4,18 @@ WORKDIR /workspace
 COPY pom.xml ./
 COPY atry-platform/pom.xml atry-platform/
 COPY atry-contracts/pom.xml atry-contracts/
+COPY atry-identity/pom.xml atry-identity/
+COPY atry-payment/pom.xml atry-payment/
+COPY atry-llm/pom.xml atry-llm/
+COPY atry-metering/pom.xml atry-metering/
 COPY atry-app/pom.xml atry-app/
 COPY docker/maven-settings.xml /root/.m2/settings.xml
 COPY atry-platform/src ./atry-platform/src
 COPY atry-contracts/src ./atry-contracts/src
+COPY atry-identity/src ./atry-identity/src
+COPY atry-payment/src ./atry-payment/src
+COPY atry-llm/src ./atry-llm/src
+COPY atry-metering/src ./atry-metering/src
 COPY atry-app/src ./atry-app/src
 RUN mvn -B -ntp -DskipTests package
 

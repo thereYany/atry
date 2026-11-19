@@ -72,6 +72,20 @@ docs/bench/p6-demo.sh
 - 结构化日志 `LLM_EVENTS` 的 `llm.call.finished` 同步输出 `cost.amount_micros`，指标 `atry.llm.cost{tenant,model}` 同步累加；
 - 验收记录见 [docs/evidence/p6-demo.md](docs/evidence/p6-demo.md)。
 
+## Docker Compose 部署
+
+```bash
+cp .env.docker.example .env.docker        # 填 DB/Redis 密码、JWT_SECRET 等
+docker compose --env-file .env.docker build backend
+docker compose --env-file .env.docker up -d
+curl -s http://127.0.0.1:9091/actuator/health   # 期望 status: UP
+```
+
+- 三容器：MySQL 8 / Redis 7 / 后端（端口默认只绑 127.0.0.1）；数据在命名卷里；
+- 已在本机真机验证：镜像构建、健康检查、演示脚本 `/api/demo/llm/chat`、SSE `/api/demo/llm/stream` 全通，见
+  [docs/evidence/p7-docker-smoke.md](docs/evidence/p7-docker-smoke.md)；
+- 可观测栈（Prometheus/Grafana/Jaeger）用 `compose.observability.yml`。
+
 ## 测试
 
 ```bash
