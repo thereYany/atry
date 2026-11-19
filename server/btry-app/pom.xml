@@ -32,6 +32,16 @@
             <artifactId>btry-payment</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.wherelee</groupId>
+            <artifactId>atry-llm</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.wherelee</groupId>
+            <artifactId>atry-metering</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

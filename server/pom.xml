@@ -23,6 +23,8 @@
         <module>btry-contracts</module>
         <module>btry-identity</module>
         <module>btry-payment</module>
+        <module>atry-llm</module>
+        <module>atry-metering</module>
         <module>btry-app</module>
     </modules>
 

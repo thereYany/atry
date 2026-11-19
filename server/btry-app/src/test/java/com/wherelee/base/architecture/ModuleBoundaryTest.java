@@ -23,6 +23,8 @@ class ModuleBoundaryTest {
                             "..modules.contracts..",
                             "..modules.identity..",
                             "..modules.payment..",
+                            "..modules.llm..",
+                            "..modules.metering..",
                             "..app..",
                             "..bootstrap.."
                     );
@@ -33,6 +35,8 @@ class ModuleBoundaryTest {
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "..modules.identity..",
                             "..modules.payment..",
+                            "..modules.llm..",
+                            "..modules.metering..",
                             "..app..",
                             "..bootstrap.."
                     );
@@ -42,6 +46,8 @@ class ModuleBoundaryTest {
             noClasses().that().resideInAPackage("..modules.identity..")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "..modules.payment..",
+                            "..modules.llm..",
+                            "..modules.metering..",
                             "..app..",
                             "..bootstrap.."
                     );
@@ -51,6 +57,8 @@ class ModuleBoundaryTest {
             noClasses().that().resideInAPackage("..modules.payment..")
                     .should().dependOnClassesThat().resideInAnyPackage(
                             "..modules.identity..",
+                            "..modules.llm..",
+                            "..modules.metering..",
                             "..app..",
                             "..bootstrap.."
                     );
@@ -72,8 +80,32 @@ class ModuleBoundaryTest {
                             "..modules.platform..",
                             "..modules.contracts..",
                             "..modules.identity..",
-                            "..modules.payment..")
+                            "..modules.payment..",
+                            "..modules.llm..",
+                            "..modules.metering..")
                     .should().dependOnClassesThat().resideInAnyPackage(
+                            "..app..",
+                            "..bootstrap.."
+                    );
+
+    @ArchTest
+    static final ArchRule llm_should_not_depend_on_other_domain_modules =
+            noClasses().that().resideInAPackage("..modules.llm..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..modules.identity..",
+                            "..modules.payment..",
+                            "..modules.metering..",
+                            "..app..",
+                            "..bootstrap.."
+                    );
+
+    @ArchTest
+    static final ArchRule metering_should_not_depend_on_other_domain_modules =
+            noClasses().that().resideInAPackage("..modules.metering..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "..modules.identity..",
+                            "..modules.payment..",
+                            "..modules.llm..",
                             "..app..",
                             "..bootstrap.."
                     );

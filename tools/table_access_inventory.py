@@ -275,6 +275,10 @@ def propose_owner(table: str, modules: dict[str, Access]) -> str:
     }
     if table in fixed:
         return fixed[table]
+    if table.startswith("t_llm_"):
+        return "llm"
+    if table.startswith("t_metering_"):
+        return "metering"
     return max(modules.items(), key=lambda kv: kv[1].statements)[0] if modules else "unknown"
 
 

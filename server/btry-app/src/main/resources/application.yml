@@ -24,7 +24,7 @@ spring:
   flyway:
     enabled: true
     # 内核表由各内核模块 jar 自带迁移；垂直应用在此基础上追加自己的 location
-    locations: classpath:db/migration/platform,classpath:db/migration/identity,classpath:db/migration/payment
+    locations: classpath:db/migration/platform,classpath:db/migration/identity,classpath:db/migration/payment,classpath:db/migration/llm,classpath:db/migration/metering
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml

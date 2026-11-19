@@ -26,6 +26,7 @@ _Others_
 * `c.w.b.m.p.MockSignatureService`
 * `c.w.b.m.p.PaymentConfig`
 * `c.w.b.m.p.PaymentMetrics`
+* `c.w.b.m.p.PaymentQueryJob`
 * `c.w.b.m.p.PaymentSafetyGuard`
 * `c.w.b.m.p.PaymentGateway` (via `c.w.b.m.p.alipay.AlipayPaymentGateway`)
 |Bean references

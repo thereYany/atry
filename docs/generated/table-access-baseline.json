@@ -1,12 +1,13 @@
 {
   "summary": {
-    "table_count": 16,
+    "table_count": 26,
     "cross_module_tables": [],
-    "multi_table_class_count": 3,
+    "multi_table_class_count": 4,
     "multi_table_classes": [
       "bootstrap:KernelDataInitializer",
       "identity:RbacRepository",
-      "identity:UserInvitationMapper"
+      "identity:UserInvitationMapper",
+      "payment:PaymentRepository"
     ],
     "cross_db_multi_table_count": 0,
     "cross_db_multi_table": {},
@@ -51,6 +52,86 @@
       "statements": 1,
       "multi_table_classes": []
     },
+    "t_llm_call_record": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_llm_outbox": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_account": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_charge": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_ledger": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_meter": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_price_book": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_rate_card": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_reservation": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
+    "t_metering_usage_event": {
+      "modules": [],
+      "effective_modules": [],
+      "module_count": 0,
+      "class_count": 0,
+      "statements": 0,
+      "multi_table_classes": []
+    },
     "t_payment_attempt": {
       "modules": [
         "payment"
@@ -83,9 +164,11 @@
         "payment"
       ],
       "module_count": 1,
-      "class_count": 2,
-      "statements": 3,
-      "multi_table_classes": []
+      "class_count": 3,
+      "statements": 4,
+      "multi_table_classes": [
+        "PaymentRepository"
+      ]
     },
     "t_payment_outbox": {
       "modules": [
@@ -95,9 +178,11 @@
         "payment"
       ],
       "module_count": 1,
-      "class_count": 1,
-      "statements": 2,
-      "multi_table_classes": []
+      "class_count": 2,
+      "statements": 3,
+      "multi_table_classes": [
+        "PaymentRepository"
+      ]
     },
     "t_permission": {
       "modules": [

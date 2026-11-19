@@ -17,7 +17,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.wherelee.base.app",
         "com.wherelee.base.bootstrap",
         "com.wherelee.base.modules.identity",
-        "com.wherelee.base.modules.payment"
+        "com.wherelee.base.modules.payment",
+        "com.wherelee.base.modules.llm",
+        "com.wherelee.base.modules.metering"
 })
 @EnableConfigurationProperties({KernelSeedProperties.class, AlertProperties.class})
 @EnableScheduling

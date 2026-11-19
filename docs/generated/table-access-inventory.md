@@ -1,7 +1,7 @@
 # 表访问清单（自动生成）
 
 - 生成脚本：`tools/table_access_inventory.py`
-- 表数量：16；有代码访问的表：16
+- 表数量：26；有代码访问的表：16
 
 ## 1. 汇总
 
@@ -10,6 +10,16 @@
 | `t_admin_audit_log` | platform/audit | 1 | 1 | 0 | AdminAuditRepository | — |
 | `t_alert_log` | platform/alert | 1 | 1 | 0 | AlertLogRepository | — |
 | `t_channel_bill` | payment | 1 | 1 | 0 | ReconRepository | — |
+| `t_llm_call_record` | llm | 0 | 0 | 0 | — | — |
+| `t_llm_outbox` | llm | 0 | 0 | 0 | — | — |
+| `t_metering_account` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_charge` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_ledger` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_meter` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_price_book` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_rate_card` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_reservation` | metering | 0 | 0 | 0 | — | — |
+| `t_metering_usage_event` | metering | 0 | 0 | 0 | — | — |
 | `t_payment_attempt` | payment | 1 | 2 | 0 | PaymentRepository | MockChannelBillProvider, PaymentRepository |
 | `t_payment_event` | payment | 1 | 1 | 0 | PaymentRepository | PaymentRepository |
 | `t_payment_order` | payment | 1 | 3 | 1 | PaymentOrderRepository | PaymentOrderRepository, PaymentRepository, ReconRepository |
@@ -53,4 +63,4 @@
 
 ## 4. 未被代码访问的表
 
-_无。_
+`t_llm_call_record`、`t_llm_outbox`、`t_metering_account`、`t_metering_charge`、`t_metering_ledger`、`t_metering_meter`、`t_metering_price_book`、`t_metering_rate_card`、`t_metering_reservation`、`t_metering_usage_event`
