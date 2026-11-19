@@ -212,8 +212,11 @@ public class LlmService implements LlmOperations {
         long deadlineAt = deadlineMs(request);
         String permit = null;
         boolean persisted = false;
+        String reservationId = null;
+        boolean settled = false;
         events.started(request, provider.id());
         try {
+            reservationId = reserveBudget(request);
             permit = rateLimiter.acquire(provider.id(), request.tenantId());
             circuitBreaker.acquire(circuitKey);
             StreamOutcome outcome = traceSpans.trace("llm.invoke",
@@ -236,6 +239,8 @@ public class LlmService implements LlmOperations {
                                 request.userId(), provider.id(), request.model(), usage, latencyMs, Instant.now()));
                 persisted = true;
                 BigDecimal streamCost = pricedCostOrZero(request, usage);
+                settleBudget(reservationId, request.requestId(), streamCost);
+                settled = true;
                 events.finished(request, provider.id(), responseOf(outcome, request.model()), usage,
                         latencyMs, 1, true, streamCost);
                 metrics.success(provider.id(), request.model(), true, latencyMs, usage, outcome.ttftMs());
@@ -249,8 +254,13 @@ public class LlmService implements LlmOperations {
             callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 1,
                     outcome.usage(), status));
             persisted = true;
-            events.failed(request, provider.id(), error, latencyMs, 1, true,
-                    pricedCostOrZero(request, outcome.usage()));
+            BigDecimal partialCost = pricedCostOrZero(request, outcome.usage());
+            if (partialCost.signum() > 0 && request.budgetRef() != null && !request.budgetRef().isBlank()) {
+                // 已输出部分内容：按部分 usage 结算（设计 04 §8：不可续写，但已产生的 token 计费）
+                settleBudget(reservationId, request.requestId(), partialCost);
+                settled = true;
+            }
+            events.failed(request, provider.id(), error, latencyMs, 1, true, partialCost);
             metrics.failure(provider.id(), request.model(), true, error, latencyMs);
             throw new LlmException(error);
         } catch (LlmException e) {
@@ -274,6 +284,9 @@ public class LlmService implements LlmOperations {
         } finally {
             if (permit != null) {
                 rateLimiter.release(permit);
+            }
+            if (reservationId != null && !settled) {
+                releaseBudget(reservationId);
             }
         }
     }

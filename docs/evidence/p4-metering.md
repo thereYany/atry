@@ -55,6 +55,7 @@ IT_DB_URL=...atry_it... mvn -B -Pintegration -pl btry-app \
 ## 7. 已知限制 / 后续
 
 - `settle` 失败记 warning 不影响已完成调用返回（避免"模型已生成却报错"），靠对账补偿；
+- 流式调用计费已在 P7-③ 接入（预扣/部分结算/取消释放，见 [p7-streaming](p7-streaming.md)）。
 - outbox 单实例轮询；多实例需抢占锁/MQ；
 - 价格 seed 仅演示，真实价格在 P5 按 DeepSeek 官方价建版本；
 - 多币种/汇率、发票税务、充值退款申请不在本期。

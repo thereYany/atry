@@ -61,6 +61,13 @@ docs/bench/p6-demo.sh
  "balance":{"balance":9.999790,"frozen":0.000000,"currency":"CNY"}}
 ```
 
+- 流式演示：`POST /api/demo/llm/stream`（SSE，事件 `delta`/`done`/`error`），done 事件带用量/成本/结算后余额：
+
+  ```bash
+  curl -N -X POST http://127.0.0.1:8084/api/demo/llm/stream \
+    -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+    -d '{"message":"流式演示","model":"mock-small","maxTokens":32}'
+  ```
 - mock provider 默认零依赖；`DEEPSEEK_ENABLED=true` + `DEEPSEEK_API_KEY` 后可把 `model` 换成 `deepseek-flash` 走真实 provider；
 - 结构化日志 `LLM_EVENTS` 的 `llm.call.finished` 同步输出 `cost.amount_micros`，指标 `atry.llm.cost{tenant,model}` 同步累加；
 - 验收记录见 [docs/evidence/p6-demo.md](docs/evidence/p6-demo.md)。

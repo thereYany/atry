@@ -1,15 +1,21 @@
 package com.wherelee.base.app.demo;
 
 import com.wherelee.base.modules.contracts.llm.ChatMessage;
+import com.wherelee.base.modules.contracts.llm.LlmError;
+import com.wherelee.base.modules.contracts.llm.LlmErrorCategory;
+import com.wherelee.base.modules.contracts.llm.LlmException;
 import com.wherelee.base.modules.contracts.llm.LlmOperations;
 import com.wherelee.base.modules.contracts.llm.LlmRequest;
 import com.wherelee.base.modules.contracts.llm.LlmResponse;
+import com.wherelee.base.modules.contracts.llm.LlmStreamSink;
 import com.wherelee.base.modules.contracts.llm.LlmUsage;
 import com.wherelee.base.modules.contracts.metering.MeteringOperations;
 import com.wherelee.base.modules.contracts.metering.SubjectRef;
 import com.wherelee.base.modules.contracts.metering.UsageQuery;
 import com.wherelee.base.modules.contracts.metering.UsageView;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,11 +26,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 演示宿主：一条 curl 走完「LLM 调用 → 用量 → 计价 → 预扣/结算 → 余额」。
@@ -40,18 +52,26 @@ public class DemoLlmController {
     private static final Logger log = LoggerFactory.getLogger(DemoLlmController.class);
     private static final long DEMO_APP_ID = 0L;
     private static final long DEADLINE_SECONDS = 30L;
+    private static final long STREAM_DEADLINE_SECONDS = 300L;
+    private static final long STREAM_TIMEOUT_MS = 300_000L;
 
     private final LlmOperations llm;
     private final MeteringOperations metering;
     private final DemoBillingSupport billing;
     private final AtryDemoProperties properties;
+    private final ExecutorService llmCallExecutor;
+    private final ObjectMapper objectMapper;
 
     public DemoLlmController(LlmOperations llm, MeteringOperations metering,
-                             DemoBillingSupport billing, AtryDemoProperties properties) {
+                             DemoBillingSupport billing, AtryDemoProperties properties,
+                             @Qualifier("llmCallThreadExecutor") ExecutorService llmCallExecutor,
+                             ObjectMapper objectMapper) {
         this.llm = llm;
         this.metering = metering;
         this.billing = billing;
         this.properties = properties;
+        this.llmCallExecutor = llmCallExecutor;
+        this.objectMapper = objectMapper;
     }
 
     /** 同步调用：返回内容、用量、本次成本与结算后余额。 */
@@ -86,6 +106,96 @@ public class DemoLlmController {
         return new DemoChatResponse(requestId, response.provider(), response.modelServed(), response.content(),
                 response.finishReason(), latencyMs, usage(usage), new DemoChatResponse.Money(cost, properties.currency()),
                 balance);
+    }
+
+    /**
+     * SSE 流式调用：`delta` 增量事件 + `done` 汇总事件（用量/成本/结算后余额）+ `error` 错误事件。
+     *
+     * <p>客户端断开后下一次写入会失败，回调里转为 CANCELLED 向上传播：
+     * 框架取消上游生成并释放预扣（不继续计费）。</p>
+     */
+    @PostMapping(value = "/llm/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream(@RequestAttribute("tenantId") long tenantId,
+                             @RequestAttribute("userId") long userId,
+                             @Valid @RequestBody DemoChatRequest body) {
+        SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MS);
+        llmCallExecutor.execute(() -> runStream(emitter, tenantId, userId, body));
+        return emitter;
+    }
+
+    private void runStream(SseEmitter emitter, long tenantId, long userId, DemoChatRequest body) {
+        SubjectRef subject = billing.subject(tenantId, userId);
+        String requestId = "demo" + UUID.randomUUID().toString().replace("-", "");
+        String model = body.model() == null || body.model().isBlank()
+                ? properties.defaultModel() : body.model().trim();
+        int maxTokens = body.maxTokens() == null ? properties.defaultMaxTokens() : body.maxTokens();
+        StringBuilder content = new StringBuilder();
+        AtomicReference<LlmUsage> usageRef = new AtomicReference<>();
+        AtomicReference<String> finishReasonRef = new AtomicReference<>();
+        try {
+            billing.ensureAccount(subject);
+            LlmRequest request = new LlmRequest(requestId, tenantId, DEMO_APP_ID, userId, model,
+                    List.of(new ChatMessage("user", body.message().trim())), maxTokens, true,
+                    Instant.now().plusSeconds(STREAM_DEADLINE_SECONDS), "demo");
+            llm.stream(request, new LlmStreamSink() {
+                @Override
+                public void onChunk(String delta) {
+                    content.append(delta);
+                    send(emitter, "delta", Map.of("delta", delta));
+                }
+
+                @Override
+                public void onComplete(LlmUsage usage, String finishReason) {
+                    usageRef.set(usage);
+                    finishReasonRef.set(finishReason);
+                }
+
+                @Override
+                public void onError(LlmError error) {
+                    // 错误由 LlmService 统一落库/记录后抛出，这里不重复发送
+                }
+            });
+            LlmUsage usage = usageRef.get() == null
+                    ? new LlmUsage(0, 0, 0, 0, 0, LlmUsage.Source.ESTIMATED)
+                    : usageRef.get();
+            BigDecimal cost = billing.cost(usage, model, Instant.now());
+            DemoChatResponse.Balance balance = billing.toView(metering.queryBalance(subject));
+            log.info("demo.llm.stream requestId={} tenantId={} userId={} model={} usage={} cost={}",
+                    requestId, tenantId, userId, model, usage.totalTokens(), cost);
+            trySend(emitter, "done", new DemoChatResponse(requestId, "mock/stream", model,
+                    content.toString(), finishReasonRef.get(), 0, usage(usage),
+                    new DemoChatResponse.Money(cost, properties.currency()), balance));
+            emitter.complete();
+        } catch (LlmException e) {
+            log.warn("demo.llm.stream.failed requestId={} category={} message={}",
+                    requestId, e.error().category(), e.error().message());
+            trySend(emitter, "error", Map.of("category", e.error().category().name(),
+                    "message", e.error().message()));
+            emitter.complete();
+        } catch (RuntimeException e) {
+            log.error("demo.llm.stream.unexpected requestId={}", requestId, e);
+            trySend(emitter, "error", Map.of("message", "流式调用内部错误"));
+            emitter.complete();
+        }
+    }
+
+    /** 发送 SSE 事件；客户端断开时转 CANCELLED 向上传播，让框架取消上游并释放预扣。 */
+    private void send(SseEmitter emitter, String event, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(event)
+                    .data(objectMapper.writeValueAsString(data), MediaType.APPLICATION_JSON));
+        } catch (IOException | IllegalStateException e) {
+            throw new LlmException(new LlmError(LlmErrorCategory.CANCELLED, null, false, false,
+                    "客户端已断开：" + e.getClass().getSimpleName()));
+        }
+    }
+
+    private void trySend(SseEmitter emitter, String event, Object data) {
+        try {
+            send(emitter, event, data);
+        } catch (RuntimeException ignored) {
+            // 客户端已断/emitter 已结束：不再抛出
+        }
     }
 
     /** 当前演示账户余额（首次访问自动开户并注入演示余额）。 */
