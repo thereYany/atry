@@ -1,6 +1,6 @@
 # atry AI 基座设计包
 
-> 状态：**设计定稿 + 实施中**。P0（模块/契约/迁移/门禁）、P1（mock 调用闭环）、P2a/P2b（超时/重试/熔断/限流）已完成，证据见 [../evidence/p0-skeleton.md](../evidence/p0-skeleton.md) 与 [../evidence/p1-call-loop.md](../evidence/p1-call-loop.md)；实现按 [08 迭代计划](08-迭代计划与验收门.md) 推进。
+> 状态：**设计定稿 + 实施中**。P0（模块/契约/迁移/门禁）、P1（mock 调用闭环）、P2（超时/重试/熔断/限流/流式）已完成，证据见 [../evidence/p0-skeleton.md](../evidence/p0-skeleton.md) 与 [../evidence/p1-call-loop.md](../evidence/p1-call-loop.md)；实现按 [08 迭代计划](08-迭代计划与验收门.md) 推进。
 > 目标读者：项目 owner、参与实现的 agent、面试复盘。
 
 ## 阅读顺序

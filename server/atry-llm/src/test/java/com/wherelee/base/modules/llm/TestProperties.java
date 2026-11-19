@@ -10,10 +10,10 @@ public final class TestProperties {
 
     public static LlmProperties defaults() {
         return new LlmProperties(
-                new LlmProperties.Mock(0, "mock-fail", "mock-flaky", "mock-slow", 5000, 128),
+                new LlmProperties.Mock(0, "mock-fail", "mock-flaky", "mock-slow", 5000, 128, 8, 10, "mock-stream-mid-fail"),
                 new LlmProperties.Timeouts(5000, 45000, 60000, 600000),
                 new LlmProperties.Retry(3, 300, 2000, 0.2),
-                new LlmProperties.Circuit(50, 20, 30000, 5),
+                new LlmProperties.Circuit(50, 20, 30000, 5, 0, 60),
                 new LlmProperties.RateLimit(600, 6000, 100));
     }
 }

@@ -14,7 +14,8 @@ public record LlmProperties(
 
     /** mock provider 行为（仅测试/本地）。 */
     public record Mock(long delayMs, String failureModel, String flakyModel, String slowModel,
-                       long slowDelayMs, int defaultMaxTokens) {
+                       long slowDelayMs, int defaultMaxTokens,
+                       int chunkCount, long chunkDelayMs, String midStreamFailModel) {
     }
 
     /** 四层超时（P2 非流式用 total；流式 P2c/P3 用 firstToken/chunkIdle）。 */
@@ -24,7 +25,8 @@ public record LlmProperties(
     public record Retry(int maxAttempts, long initialBackoffMs, long maxBackoffMs, double jitterRatio) {
     }
 
-    public record Circuit(int failureRateThreshold, int minimumCalls, long openMs, int halfOpenProbes) {
+    public record Circuit(int failureRateThreshold, int minimumCalls, long openMs, int halfOpenProbes,
+                          long slowCallMs, int slowCallRateThreshold) {
     }
 
     public record RateLimit(int tenantRpm, int providerRpm, int maxInFlight) {

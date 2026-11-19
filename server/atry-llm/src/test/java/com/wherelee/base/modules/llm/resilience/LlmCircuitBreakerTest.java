@@ -12,10 +12,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class LlmCircuitBreakerTest {
 
     private final LlmCircuitBreaker breaker = new LlmCircuitBreaker(new LlmProperties(
-            new LlmProperties.Mock(0, "mock-fail", "mock-flaky", "mock-slow", 5000, 128),
+            new LlmProperties.Mock(0, "mock-fail", "mock-flaky", "mock-slow", 5000, 128, 8, 10, "mock-stream-mid-fail"),
             new LlmProperties.Timeouts(5000, 45000, 60000, 600000),
             new LlmProperties.Retry(3, 300, 2000, 0.2),
-            new LlmProperties.Circuit(50, 2, 100, 2),
+            new LlmProperties.Circuit(50, 2, 100, 2, 0, 60),
             new LlmProperties.RateLimit(600, 6000, 100)));
 
     @Test
@@ -49,5 +49,21 @@ class LlmCircuitBreakerTest {
 
     private LlmError error(LlmErrorCategory category) {
         return new LlmError(category, null, true, false, "test");
+    }
+
+    @Test
+    void slowCallsOpenCircuitBeforeFailures() {
+        LlmCircuitBreaker slowBreaker = new LlmCircuitBreaker(new LlmProperties(
+                new LlmProperties.Mock(0, "mock-fail", "mock-flaky", "mock-slow", 5000, 128, 8, 10,
+                        "mock-stream-mid-fail"),
+                new LlmProperties.Timeouts(5000, 45000, 60000, 600000),
+                new LlmProperties.Retry(3, 300, 2000, 0.2),
+                new LlmProperties.Circuit(50, 2, 1000, 2, 10, 50),
+                new LlmProperties.RateLimit(600, 6000, 100)));
+
+        slowBreaker.recordSuccess("mock:mock-slow", 50);
+        slowBreaker.recordSuccess("mock:mock-slow", 50);
+
+        assertThat(slowBreaker.isOpen("mock:mock-slow")).isTrue();
     }
 }

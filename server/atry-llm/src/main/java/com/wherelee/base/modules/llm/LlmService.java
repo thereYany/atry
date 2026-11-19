@@ -15,6 +15,8 @@ import com.wherelee.base.modules.llm.call.LlmCallRepository;
 import com.wherelee.base.modules.llm.call.LlmCallWriter;
 import com.wherelee.base.modules.llm.config.LlmProperties;
 import com.wherelee.base.modules.llm.execution.LlmCallExecutor;
+import com.wherelee.base.modules.llm.execution.LlmStreamExecutor;
+import com.wherelee.base.modules.llm.execution.StreamOutcome;
 import com.wherelee.base.modules.llm.provider.LlmProvider;
 import com.wherelee.base.modules.llm.provider.LlmProviderRegistry;
 import com.wherelee.base.modules.llm.resilience.LlmCircuitBreaker;
@@ -47,6 +49,7 @@ public class LlmService implements LlmOperations {
     private final LlmCallWriter callWriter;
     private final TraceSpans traceSpans;
     private final LlmCallExecutor executor;
+    private final LlmStreamExecutor streamExecutor;
     private final LlmRetryPolicy retryPolicy;
     private final LlmRetryBudget retryBudget;
     private final LlmCircuitBreaker circuitBreaker;
@@ -55,6 +58,7 @@ public class LlmService implements LlmOperations {
 
     public LlmService(LlmProviderRegistry providerRegistry, LlmCallRepository callRepository,
                       LlmCallWriter callWriter, TraceSpans traceSpans, LlmCallExecutor executor,
+                      LlmStreamExecutor streamExecutor,
                       LlmRetryPolicy retryPolicy, LlmRetryBudget retryBudget,
                       LlmCircuitBreaker circuitBreaker, LlmRateLimiter rateLimiter,
                       LlmProperties properties) {
@@ -63,6 +67,7 @@ public class LlmService implements LlmOperations {
         this.callWriter = callWriter;
         this.traceSpans = traceSpans;
         this.executor = executor;
+        this.streamExecutor = streamExecutor;
         this.retryPolicy = retryPolicy;
         this.retryBudget = retryBudget;
         this.circuitBreaker = circuitBreaker;
@@ -110,10 +115,10 @@ public class LlmService implements LlmOperations {
                     LlmUsage usage = response.usage() == null
                             ? new LlmUsage(0, 0, 0, 0, 0, LlmUsage.Source.ESTIMATED)
                             : response.usage();
-                    circuitBreaker.recordSuccess(circuitKey);
+                    circuitBreaker.recordSuccess(circuitKey, latencyMs);
                     retryBudget.onSuccess(provider.id());
                     callWriter.writeSuccess(
-                            successRecord(request, provider.id(), response, usage, latencyMs, attempts),
+                            successRecord(request, provider.id(), response, usage, latencyMs, attempts, false),
                             new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
                                     request.userId(), provider.id(), response.modelServed(), usage,
                                     latencyMs, Instant.now()));
@@ -168,7 +173,91 @@ public class LlmService implements LlmOperations {
 
     @Override
     public void stream(LlmRequest request, LlmStreamSink sink) {
-        throw new BizException(HttpStatus.NOT_IMPLEMENTED, "流式调用将在 P2c 实现");
+        validate(request);
+        if (callRepository.existsByRequestId(request.requestId())) {
+            throw new LlmException(new LlmError(LlmErrorCategory.INVALID_REQUEST, null, false, false,
+                    "重复的 requestId：" + request.requestId()));
+        }
+        LlmProvider provider = providerRegistry.resolve(request.model());
+        String circuitKey = provider.id() + ":" + request.model();
+        long startedAt = System.currentTimeMillis();
+        long deadlineAt = deadlineMs(request);
+        String permit = null;
+        boolean persisted = false;
+        log.info("llm.call.started requestId={} tenantId={} appId={} userId={} provider={} model={} stream=true",
+                request.requestId(), request.tenantId(), request.appId(), request.userId(),
+                provider.id(), request.model());
+        try {
+            permit = rateLimiter.acquire(provider.id(), request.tenantId());
+            circuitBreaker.acquire(circuitKey);
+            StreamOutcome outcome = traceSpans.trace("llm.invoke",
+                    TraceSpans.tags("llm.request_id", request.requestId(),
+                            "llm.provider", provider.id(),
+                            "llm.model", request.model(),
+                            "llm.stream", "true"),
+                    () -> streamExecutor.stream(provider, request, sink,
+                            timeouts.firstTokenMs(), timeouts.chunkIdleMs(), timeouts.totalMs(), deadlineAt));
+            long latencyMs = System.currentTimeMillis() - startedAt;
+            if (outcome.completed()) {
+                LlmUsage usage = outcome.usage() == null
+                        ? new LlmUsage(0, 0, 0, 0, 0, LlmUsage.Source.ESTIMATED)
+                        : outcome.usage();
+                circuitBreaker.recordSuccess(circuitKey, latencyMs);
+                retryBudget.onSuccess(provider.id());
+                callWriter.writeSuccess(
+                        successRecord(request, provider.id(), responseOf(outcome, request.model()), usage,
+                                latencyMs, 1, true),
+                        new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
+                                request.userId(), provider.id(), request.model(), usage, latencyMs, Instant.now()));
+                persisted = true;
+                log.info("llm.call.finished requestId={} provider={} model={} stream=true chunks={} "
+                                + "inputTokens={} outputTokens={} usageSource={} latencyMs={} status=SUCCESS",
+                        request.requestId(), provider.id(), request.model(), outcome.chunks(),
+                        usage.inputTokens(), usage.outputTokens(), usage.source(), latencyMs);
+                return;
+            }
+            LlmError error = outcome.error();
+            circuitBreaker.recordFailure(circuitKey, error);
+            String status = error.category() == LlmErrorCategory.CANCELLED ? "CANCELLED"
+                    : error.category() == LlmErrorCategory.STREAM_INTERRUPTED ? "INTERRUPTED" : "FAILED";
+            callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 1,
+                    outcome.usage(), status));
+            persisted = true;
+            log.error("llm.call.failed requestId={} provider={} model={} stream=true category={} "
+                            + "providerCode={} chunks={} partialTokens={} latencyMs={} status={}",
+                    request.requestId(), provider.id(), request.model(), error.category(),
+                    error.providerCode(), outcome.chunks(),
+                    outcome.usage() == null ? 0 : outcome.usage().totalTokens(), latencyMs, status);
+            throw new LlmException(error);
+        } catch (LlmException e) {
+            if (!persisted) {
+                long latencyMs = System.currentTimeMillis() - startedAt;
+                callWriter.writeFailure(failureRecord(request, provider.id(), e.error(), latencyMs, 0));
+                log.error("llm.call.failed requestId={} provider={} model={} stream=true category={} "
+                                + "providerCode={} attempts=0 latencyMs={}",
+                        request.requestId(), provider.id(), request.model(), e.error().category(),
+                        e.error().providerCode(), latencyMs);
+            }
+            throw e;
+        } catch (RuntimeException e) {
+            long latencyMs = System.currentTimeMillis() - startedAt;
+            LlmError error = new LlmError(LlmErrorCategory.INTERNAL, "UNEXPECTED", false, false,
+                    "流式调用内部错误：" + e.getClass().getSimpleName());
+            if (!persisted) {
+                callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 0));
+            }
+            log.error("llm.call.failed requestId={} provider={} model={} stream=true category=INTERNAL latencyMs={}",
+                    request.requestId(), provider.id(), request.model(), latencyMs, e);
+            throw new LlmException(error, e);
+        } finally {
+            if (permit != null) {
+                rateLimiter.release(permit);
+            }
+        }
+    }
+
+    private LlmResponse responseOf(StreamOutcome outcome, String modelServed) {
+        return new LlmResponse(null, null, modelServed, null, outcome.finishReason(), outcome.usage(), false);
     }
 
     private long deadlineMs(LlmRequest request) {
@@ -220,9 +309,9 @@ public class LlmService implements LlmOperations {
     }
 
     private LlmCallRecord successRecord(LlmRequest request, String providerId, LlmResponse response,
-                                        LlmUsage usage, long latencyMs, int attempts) {
+                                        LlmUsage usage, long latencyMs, int attempts, boolean stream) {
         return new LlmCallRecord(request.requestId(), request.tenantId(), request.appId(), request.userId(),
-                "chat", providerId, null, request.model(), response.modelServed(), false, attempts, "SUCCESS",
+                "chat", providerId, null, request.model(), response.modelServed(), stream, attempts, "SUCCESS",
                 null, null, null, null,
                 usage.inputTokens(), usage.outputTokens(), usage.cachedReadTokens(),
                 usage.cachedWriteTokens(), usage.reasoningTokens(), usage.source().name(), latencyMs, null);
@@ -230,9 +319,18 @@ public class LlmService implements LlmOperations {
 
     private LlmCallRecord failureRecord(LlmRequest request, String providerId, LlmError error,
                                         long latencyMs, int attempts) {
+        return failureRecord(request, providerId, error, latencyMs, attempts, null, "FAILED");
+    }
+
+    private LlmCallRecord failureRecord(LlmRequest request, String providerId, LlmError error,
+                                        long latencyMs, int attempts, LlmUsage usage, String status) {
         return new LlmCallRecord(request.requestId(), request.tenantId(), request.appId(), request.userId(),
-                "chat", providerId, null, request.model(), null, false, attempts, "FAILED",
+                "chat", providerId, null, request.model(), null, "INTERRUPTED".equals(status) || "CANCELLED".equals(status),
+                attempts, status,
                 error.category().name(), error.providerCode(), error.retryable(), error.billable(),
-                0, 0, 0, 0, 0, null, latencyMs, null);
+                usage == null ? 0 : usage.inputTokens(), usage == null ? 0 : usage.outputTokens(),
+                usage == null ? 0 : usage.cachedReadTokens(), usage == null ? 0 : usage.cachedWriteTokens(),
+                usage == null ? 0 : usage.reasoningTokens(),
+                usage == null ? null : usage.source().name(), latencyMs, null);
     }
 }

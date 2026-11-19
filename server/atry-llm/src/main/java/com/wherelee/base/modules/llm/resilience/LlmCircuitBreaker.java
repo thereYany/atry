@@ -57,12 +57,33 @@ public class LlmCircuitBreaker {
     }
 
     public void recordSuccess(String key) {
+        recordSuccess(key, 0);
+    }
+
+    /** 成功回调，同时累计慢调用；慢调用率超阈值时提前打开（抢在下游真崩前降载）。 */
+    public void recordSuccess(String key, long latencyMs) {
         State state = states.computeIfAbsent(key, ignored -> new State());
         synchronized (state) {
-            state.mode = Mode.CLOSED;
-            state.calls = 0;
-            state.failures = 0;
-            state.openUntil = 0;
+            long now = System.currentTimeMillis();
+            if (state.mode == Mode.HALF_OPEN) {
+                state.mode = Mode.CLOSED;
+                state.calls = 0;
+                state.failures = 0;
+                state.slowCalls = 0;
+                state.openUntil = 0;
+                return;
+            }
+            if (state.mode == Mode.OPEN) {
+                return;
+            }
+            state.calls++;
+            if (config.slowCallMs() > 0 && latencyMs >= config.slowCallMs()) {
+                state.slowCalls++;
+            }
+            if (state.calls >= Math.max(1, config.minimumCalls())
+                    && state.slowCalls * 100.0 / state.calls >= config.slowCallRateThreshold()) {
+                open(state, now);
+            }
         }
     }
 
@@ -104,6 +125,7 @@ public class LlmCircuitBreaker {
         state.openUntil = now + Math.max(1, config.openMs());
         state.calls = 0;
         state.failures = 0;
+        state.slowCalls = 0;
     }
 
     private LlmException circuitOpen(String key) {
@@ -117,6 +139,7 @@ public class LlmCircuitBreaker {
         private Mode mode = Mode.CLOSED;
         private int calls;
         private int failures;
+        private int slowCalls;
         private long openUntil;
         private int halfOpenRemaining;
     }

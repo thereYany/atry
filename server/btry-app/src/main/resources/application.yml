@@ -186,6 +186,9 @@ atry:
       slow-model: ${ATRY_LLM_MOCK_SLOW_MODEL:mock-slow}
       slow-delay-ms: ${ATRY_LLM_MOCK_SLOW_DELAY_MS:5000}
       default-max-tokens: ${ATRY_LLM_MOCK_DEFAULT_MAX_TOKENS:128}
+      chunk-count: ${ATRY_LLM_MOCK_CHUNK_COUNT:8}
+      chunk-delay-ms: ${ATRY_LLM_MOCK_CHUNK_DELAY_MS:10}
+      mid-stream-fail-model: ${ATRY_LLM_MOCK_MID_STREAM_FAIL_MODEL:mock-stream-mid-fail}
     timeouts:
       connect-ms: ${ATRY_LLM_CONNECT_TIMEOUT_MS:5000}
       first-token-ms: ${ATRY_LLM_FIRST_TOKEN_TIMEOUT_MS:45000}
@@ -201,6 +204,8 @@ atry:
       minimum-calls: ${ATRY_LLM_CIRCUIT_MIN_CALLS:20}
       open-ms: ${ATRY_LLM_CIRCUIT_OPEN_MS:30000}
       half-open-probes: ${ATRY_LLM_CIRCUIT_HALF_OPEN_PROBES:5}
+      slow-call-ms: ${ATRY_LLM_CIRCUIT_SLOW_CALL_MS:0}
+      slow-call-rate-threshold: ${ATRY_LLM_CIRCUIT_SLOW_CALL_RATE:60}
     rate-limit:
       tenant-rpm: ${ATRY_LLM_TENANT_RPM:600}
       provider-rpm: ${ATRY_LLM_PROVIDER_RPM:6000}

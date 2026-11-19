@@ -5,6 +5,7 @@ import com.wherelee.base.modules.contracts.llm.LlmErrorCategory;
 import com.wherelee.base.modules.contracts.llm.LlmException;
 import com.wherelee.base.modules.contracts.llm.LlmRequest;
 import com.wherelee.base.modules.contracts.llm.LlmResponse;
+import com.wherelee.base.modules.contracts.llm.LlmStreamSink;
 import com.wherelee.base.modules.contracts.llm.LlmUsage;
 import com.wherelee.base.modules.llm.config.LlmProperties;
 import org.springframework.stereotype.Component;
@@ -72,6 +73,34 @@ public class MockLlmProvider implements LlmProvider {
         String content = "mock reply: " + (first.length() > 80 ? first.substring(0, 80) : first);
         return new LlmResponse(request.requestId(), id(), model, content, "stop",
                 new LlmUsage(inputTokens, outputTokens, 0, 0, 0, LlmUsage.Source.PROVIDER), false);
+    }
+
+    @Override
+    public void stream(LlmRequest request, LlmStreamSink sink) {
+        String model = request.model();
+        if (model.equals(properties.failureModel())) {
+            throw new LlmException(new LlmError(LlmErrorCategory.UPSTREAM_5XX, "MOCK_FAILURE",
+                    true, false, "mock provider 模拟流式失败（首 token 前）：" + model));
+        }
+        if (model.equals(properties.slowModel())) {
+            sleep(properties.slowDelayMs());
+        }
+        int chunks = Math.max(1, properties.chunkCount());
+        int midFailAt = chunks / 2;
+        for (int i = 0; i < chunks; i++) {
+            if (properties.chunkDelayMs() > 0) {
+                sleep(properties.chunkDelayMs());
+            }
+            if (model.equals(properties.midStreamFailModel()) && i == midFailAt) {
+                throw new LlmException(new LlmError(LlmErrorCategory.STREAM_INTERRUPTED, "MOCK_MID_STREAM_FAILURE",
+                        false, true, "mock provider 模拟流中断（已输出部分内容）"));
+            }
+            sink.onChunk("mock-chunk-" + i + " ");
+        }
+        int input = estimateInputTokens(request.messages().stream()
+                .map(m -> m.content() == null ? "" : m.content()).toList());
+        int output = chunks * 2L <= Integer.MAX_VALUE ? chunks * 2 : chunks;
+        sink.onComplete(new LlmUsage(input, output, 0, 0, 0, LlmUsage.Source.PROVIDER), "stop");
     }
 
     static int estimateInputTokens(List<String> contents) {

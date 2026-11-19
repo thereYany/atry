@@ -68,4 +68,80 @@ class LlmReliabilityIntegrationTest extends KernelIntegrationTestSupport {
         assertThat(((Number) row.get("attempt_count")).intValue()).isEqualTo(3);
         assertThat(count("t_llm_outbox", "aggregate_id = ?", "req-p2-timeout")).isZero();
     }
+
+    @Test
+    void streamsChunksAndPersistsSuccess() {
+        StringBuilder content = new StringBuilder();
+        TestSink sink = new TestSink(content);
+        LlmRequest request = new LlmRequest("req-p2-stream", 0, 0, 7, "mock-small",
+                List.of(new ChatMessage("user", "hello")), 64, true, null, null);
+
+        llm.stream(request, sink);
+
+        assertThat(content.toString()).contains("mock-chunk-0", "mock-chunk-7");
+        assertThat(sink.usage).isNotNull();
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT * FROM t_llm_call_record WHERE request_id = ?", "req-p2-stream");
+        assertThat(row.get("status")).isEqualTo("SUCCESS");
+        assertThat(row.get("stream")).isEqualTo(true);
+        assertThat(((Number) row.get("output_tokens")).longValue()).isEqualTo(16);
+        assertThat(count("t_llm_outbox", "aggregate_id = ?", "req-p2-stream")).isEqualTo(1);
+    }
+
+    @Test
+    void midStreamFailureMarksInterruptedWithPartialUsage() {
+        TestSink sink = new TestSink(new StringBuilder());
+        LlmRequest request = new LlmRequest("req-p2-stream-mid", 0, 0, 7, "mock-stream-mid-fail",
+                List.of(new ChatMessage("user", "hello")), 64, true, null, null);
+
+        assertThatThrownBy(() -> llm.stream(request, sink))
+                .isInstanceOfSatisfying(LlmException.class,
+                        e -> assertThat(e.error().category()).isEqualTo(LlmErrorCategory.STREAM_INTERRUPTED));
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT * FROM t_llm_call_record WHERE request_id = ?", "req-p2-stream-mid");
+        assertThat(row.get("status")).isEqualTo("INTERRUPTED");
+        assertThat(((Number) row.get("output_tokens")).longValue()).isGreaterThan(0);
+        assertThat(count("t_llm_outbox", "aggregate_id = ?", "req-p2-stream-mid")).isZero();
+    }
+
+    @Test
+    void firstTokenTimeoutMarksFailed() {
+        TestSink sink = new TestSink(new StringBuilder());
+        LlmRequest request = new LlmRequest("req-p2-stream-slow", 0, 0, 7, "mock-slow",
+                List.of(new ChatMessage("user", "hello")), 64, true, null, null);
+
+        assertThatThrownBy(() -> llm.stream(request, sink))
+                .isInstanceOfSatisfying(LlmException.class,
+                        e -> assertThat(e.error().category()).isEqualTo(LlmErrorCategory.TIMEOUT_FIRST_TOKEN));
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT * FROM t_llm_call_record WHERE request_id = ?", "req-p2-stream-slow");
+        assertThat(row.get("status")).isEqualTo("FAILED");
+        assertThat(row.get("error_category")).isEqualTo("TIMEOUT_FIRST_TOKEN");
+    }
+
+    private static final class TestSink implements com.wherelee.base.modules.contracts.llm.LlmStreamSink {
+        private final StringBuilder content;
+        private com.wherelee.base.modules.contracts.llm.LlmUsage usage;
+
+        private TestSink(StringBuilder content) {
+            this.content = content;
+        }
+
+        @Override
+        public void onChunk(String delta) {
+            content.append(delta);
+        }
+
+        @Override
+        public void onComplete(com.wherelee.base.modules.contracts.llm.LlmUsage usage, String finishReason) {
+            this.usage = usage;
+        }
+
+        @Override
+        public void onError(com.wherelee.base.modules.contracts.llm.LlmError error) {
+            // 服务层会在失败时抛异常，sink 的 onError 已由执行器调用
+        }
+    }
 }
