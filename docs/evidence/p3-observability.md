@@ -65,4 +65,4 @@
 - Prometheus 看板/告警规则在 P5 用压测数据校准；
 - 成本联动已于 P6 补齐：`llm.call.finished` 输出 cost（amount / amount_micros），`atry.llm.cost` 指标按 tenant×model 累加
   （见 [p6-demo](p6-demo.md)）；
-- `@BudgetGuard` 仍未实现（依赖 P4，已具备条件）。
+- `@BudgetGuard` 已在 P7-② 落地（见 [p7-budget-guard](p7-budget-guard.md)）。

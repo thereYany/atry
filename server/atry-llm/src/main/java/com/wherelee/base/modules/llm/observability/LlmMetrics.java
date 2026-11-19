@@ -74,6 +74,14 @@ public class LlmMetrics {
         Counter.builder("atry.llm.ratelimit.rejected").tag("scope", scope).register(registry).increment();
     }
 
+    /** 预算守卫触发计数：budgetRef × action(REJECT/DEGRADE)。 */
+    public void budgetExceeded(String budgetRef, String action) {
+        Counter.builder("atry.llm.budget.exceeded")
+                .tag("budget", budgetRef == null ? "unknown" : budgetRef)
+                .tag("action", action)
+                .register(registry).increment();
+    }
+
     private void calls(String provider, String model, boolean stream, String status) {
         Counter.builder("atry.llm.calls")
                 .tag("provider", provider)
