@@ -3,6 +3,7 @@ package com.wherelee.base.modules.payment;
 import com.wherelee.base.modules.payment.api.PaymentEventTypes;
 import com.wherelee.base.modules.payment.api.PaymentSettledEvent;
 import com.wherelee.base.modules.payment.outbox.PaymentOutboxRepository;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import com.wherelee.base.modules.platform.tracing.TraceSpans;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -107,12 +108,24 @@ public class PaymentQueryService {
                     return false;
                 }
             }
-            if (paymentOrderRepository.markClosed(payment.paymentNo()) > 0) {
-                outboxRepository.append(new PaymentSettledEvent(
-                        PaymentEventTypes.PAYMENT_EXPIRED,
-                        payment.paymentNo(), payment.bizType(), payment.bizNo(),
-                        payment.amountCents(), payment.currency(), paymentGateway.channel(),
-                        null, LocalDateTime.now()));
+            // 关单与过期事件必须归属支付单自己的租户：定时查单线程处于系统作用域（无租户上下文），
+            // 自动注入被跳过，不显式回填的话发件箱会落默认租户 0。
+            Long previousTenant = TenantContext.currentOrNull();
+            TenantContext.set(payment.tenantId());
+            boolean closed;
+            try {
+                closed = paymentOrderRepository.markClosed(payment.paymentNo()) > 0;
+                if (closed) {
+                    outboxRepository.append(new PaymentSettledEvent(
+                            PaymentEventTypes.PAYMENT_EXPIRED,
+                            payment.paymentNo(), payment.bizType(), payment.bizNo(),
+                            payment.amountCents(), payment.currency(), paymentGateway.channel(),
+                            null, LocalDateTime.now()));
+                }
+            } finally {
+                TenantContext.set(previousTenant);
+            }
+            if (closed) {
                 log.info("payment_query_expired paymentNo={} bizNo={}", payment.paymentNo(), payment.bizNo());
                 return true;
             }

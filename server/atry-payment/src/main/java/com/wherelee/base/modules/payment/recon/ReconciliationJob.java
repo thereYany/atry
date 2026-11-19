@@ -1,5 +1,6 @@
 package com.wherelee.base.modules.payment.recon;
 
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,6 +31,11 @@ public class ReconciliationJob {
 
     @Scheduled(cron = "${app.recon.cron:0 30 3 * * *}")
     public void dailyReconcile() {
+        // 对账也是平台级任务：账单核对必须覆盖全部租户，不能只看默认租户 0。
+        TenantContext.runAsSystem(this::reconcileAll);
+    }
+
+    private void reconcileAll() {
         LocalDate billDate = LocalDate.now().minusDays(1);
         Arrays.stream(channels.split(","))
                 .map(String::trim)

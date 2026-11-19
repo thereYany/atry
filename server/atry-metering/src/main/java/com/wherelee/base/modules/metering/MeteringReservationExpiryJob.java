@@ -1,6 +1,7 @@
 package com.wherelee.base.modules.metering;
 
 import com.wherelee.base.modules.contracts.metering.MeteringAdminOperations;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -24,7 +25,8 @@ public class MeteringReservationExpiryJob {
 
     @Scheduled(fixedDelayString = "${atry.metering.expiry.poll-ms:60000}")
     public void expire() {
-        int expired = admin.expireReservations(Instant.now());
+        // 回收过期预扣是平台级后台任务，统一按系统作用域执行（计量表目前不在内核租户表清单）。
+        int expired = TenantContext.runAsSystem(() -> admin.expireReservations(Instant.now()));
         if (expired > 0) {
             log.info("metering.reservation.expired count={}", expired);
         }

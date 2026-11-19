@@ -2,6 +2,7 @@ package com.wherelee.base.modules.payment.outbox;
 
 import com.wherelee.base.modules.payment.api.PaymentSettledEvent;
 import com.wherelee.base.modules.payment.api.PaymentSettledListener;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -63,7 +64,8 @@ public class PaymentOutboxDispatcher {
             initialDelayString = "${app.payment.outbox.initial-delay-ms:10000}")
     public void run() {
         try {
-            dispatchOnce();
+            // 投递器是平台级 worker：需要跨租户抢占/更新发件箱，不能按默认租户 0 过滤。
+            TenantContext.runAsSystem(this::dispatchOnce);
         } catch (Exception e) {
             log.error("支付发件箱投递任务异常", e);
         }
@@ -82,28 +84,16 @@ public class PaymentOutboxDispatcher {
         List<PaymentOutboxRepository.OutboxRow> rows = repository.claimDue(batchSize);
         int delivered = 0;
         for (PaymentOutboxRepository.OutboxRow row : rows) {
+            // 逐条按发件箱行自己的租户投递：投递器整体在系统作用域（跨租户抢占），
+            // listener 里的 SQL 需要正确租户上下文，进入前回填、结束后恢复。
+            Long previousTenant = TenantContext.currentOrNull();
+            TenantContext.set(row.tenantId());
             try {
-                PaymentSettledEvent event = repository.payload(row);
-                for (PaymentSettledListener listener : listeners) {
-                    listener.onSettled(event);
+                if (deliver(row)) {
+                    delivered++;
                 }
-                repository.markSent(row.id());
-                sent.increment();
-                delivered++;
-            } catch (Exception e) {
-                int attempts = row.attempts() + 1;
-                if (attempts >= maxAttempts) {
-                    repository.markDead(row.id(), e.toString());
-                    deadLettered.increment();
-                    log.error("支付事件投递失败进入死信 id={} eventType={} attempts={}",
-                            row.id(), row.eventType(), attempts, e);
-                } else {
-                    repository.reschedule(row.id(), attempts,
-                            backoffBaseSeconds * attempts, e.toString());
-                    failed.increment();
-                    log.warn("支付事件投递失败，稍后重试 id={} attempts={} cause={}",
-                            row.id(), attempts, e.toString());
-                }
+            } finally {
+                TenantContext.set(previousTenant);
             }
         }
         inFlight.set(repository.countInFlight());
@@ -112,5 +102,33 @@ public class PaymentOutboxDispatcher {
             log.info("支付发件箱投递完成 delivered={} inFlight={}", delivered, inFlight.get());
         }
         return delivered;
+    }
+
+    /** 投递单条事件；返回是否成功（失败按退避重试或进死信，不抛给调用方）。 */
+    private boolean deliver(PaymentOutboxRepository.OutboxRow row) {
+        try {
+            PaymentSettledEvent event = repository.payload(row);
+            for (PaymentSettledListener listener : listeners) {
+                listener.onSettled(event);
+            }
+            repository.markSent(row.id());
+            sent.increment();
+            return true;
+        } catch (Exception e) {
+            int attempts = row.attempts() + 1;
+            if (attempts >= maxAttempts) {
+                repository.markDead(row.id(), e.toString());
+                deadLettered.increment();
+                log.error("支付事件投递失败进入死信 id={} eventType={} attempts={}",
+                        row.id(), row.eventType(), attempts, e);
+            } else {
+                repository.reschedule(row.id(), attempts,
+                        backoffBaseSeconds * attempts, e.toString());
+                failed.increment();
+                log.warn("支付事件投递失败，稍后重试 id={} attempts={} cause={}",
+                        row.id(), attempts, e.toString());
+            }
+            return false;
+        }
     }
 }

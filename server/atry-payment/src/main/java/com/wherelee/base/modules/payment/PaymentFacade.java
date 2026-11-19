@@ -68,11 +68,12 @@ public class PaymentFacade implements PaymentOperations {
         String paymentNo = command.paymentNo() == null || command.paymentNo().isBlank()
                 ? PaymentNo.issue()
                 : command.paymentNo();
+        long tenantId = TenantContext.current();
         PaymentOrderView view = new PaymentOrderView(
                 paymentNo, command.bizNo(), appId, command.bizType(), command.subject(),
                 command.amountCents(), command.currency(), "CREATED", paymentGateway.channel(),
-                null, command.expireAt(), null);
-        paymentOrderRepository.insertIfAbsent(view, TenantContext.current(), LocalDateTime.now());
+                null, command.expireAt(), null, tenantId);
+        paymentOrderRepository.insertIfAbsent(view, tenantId, LocalDateTime.now());
 
         PaymentOrderView payment = paymentOrderRepository
                 .findByBiz(command.bizType(), command.bizNo())

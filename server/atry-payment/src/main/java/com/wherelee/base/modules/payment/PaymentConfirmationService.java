@@ -4,6 +4,7 @@ import com.wherelee.base.modules.payment.api.PaymentEventTypes;
 import com.wherelee.base.modules.payment.api.PaymentSettledEvent;
 import com.wherelee.base.modules.payment.outbox.PaymentOutboxRepository;
 import com.wherelee.base.modules.platform.alert.AlertPublisher;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import com.wherelee.base.modules.platform.tracing.TraceSpans;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -74,6 +75,19 @@ public class PaymentConfirmationService {
                     + (paymentNo == null ? "" : " paymentNo=" + paymentNo));
             return ConfirmationResult.rejected("未知支付单");
         }
+        // 回调/查单线程在系统作用域内跨租户定位到支付单，后续更新与发件箱写入必须
+        // 归属支付单自己的租户；try/finally 恢复进入前的上下文（请求线程与后台线程都适用）。
+        Long previousTenant = TenantContext.currentOrNull();
+        TenantContext.set(payment.tenantId());
+        try {
+            return confirm(notification, payment);
+        } finally {
+            TenantContext.set(previousTenant);
+        }
+    }
+
+    /** 在支付单归属租户的上下文中执行确认（只依赖 payment 快照，不再跨租户查询）。 */
+    private ConfirmationResult confirm(PaymentNotification notification, PaymentOrderView payment) {
         boolean successEvent = "PAYMENT_SUCCESS".equals(notification.eventType());
         if (successEvent && notification.amountCents() != payment.amountCents()) {
             metrics.amountMismatch();

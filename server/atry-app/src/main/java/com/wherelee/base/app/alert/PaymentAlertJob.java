@@ -3,6 +3,7 @@ package com.wherelee.base.app.alert;
 import com.wherelee.base.modules.contracts.payment.PaymentAlertQueries;
 import com.wherelee.base.modules.platform.alert.AlertPublisher;
 import com.wherelee.base.modules.platform.resilience.LocalFallbackCache;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -43,6 +44,11 @@ public class PaymentAlertJob {
         if (!properties.enabled()) {
             return;
         }
+        // 巡检是平台级任务：必须跨租户统计，不能按调度线程的默认租户 0 过滤。
+        TenantContext.runAsSystem(this::evaluateInternal);
+    }
+
+    private void evaluateInternal() {
         LocalDateTime now = LocalDateTime.now();
         long paidStuck = paymentAlertQueries.countSettlementUndeliveredBefore(
                 now.minusMinutes(properties.safePaymentPaidUnfulfilledMinutes()));

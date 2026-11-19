@@ -1,5 +1,6 @@
 package com.wherelee.base.modules.payment;
 
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -36,7 +37,8 @@ public class PaymentQueryJob {
             initialDelayString = "${app.payment.query.initial-delay-ms:15000}")
     public void run() {
         try {
-            int handled = queryService.queryPending();
+            // 主动查单扫描的是全租户 PAYING 单，必须在系统作用域内执行。
+            int handled = TenantContext.runAsSystem(queryService::queryPending);
             if (handled > 0) {
                 log.info("支付主动查单完成 handled={}", handled);
             }

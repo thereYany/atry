@@ -3,6 +3,7 @@ package com.wherelee.base.modules.payment.alipay;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.wherelee.base.modules.platform.alert.AlertPublisher;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import com.wherelee.base.modules.payment.PaymentOrderRepository;
 import com.wherelee.base.modules.payment.PaymentOrderView;
 import com.wherelee.base.modules.payment.PaymentAttemptRecord;
@@ -57,7 +58,10 @@ public class AlipayNotifyService {
 
     public String handle(byte[] rawBody) {
         return traceSpans.trace("payment.callback.alipay",
-                TraceSpans.tags("payment.provider", "ALIPAY"), () -> handleInternal(rawBody));
+                TraceSpans.tags("payment.provider", "ALIPAY"),
+                // 公开回调线程没有登录租户：先按系统作用域跨租户定位支付单，
+                // 确认阶段再由 PaymentConfirmationService 回填支付单自己的租户。
+                () -> TenantContext.runAsSystem(() -> handleInternal(rawBody)));
     }
 
     private String handleInternal(byte[] rawBody) {

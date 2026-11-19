@@ -29,7 +29,8 @@ public class PaymentOutboxRepository {
             rs.getString("event_type"),
             rs.getString("aggregate_no"),
             rs.getString("payload"),
-            rs.getInt("attempts")
+            rs.getInt("attempts"),
+            rs.getLong("tenant_id")
     );
 
     private final JdbcTemplate jdbc;
@@ -43,10 +44,13 @@ public class PaymentOutboxRepository {
     /** 在调用方事务内追加一条待投递事件。 */
     public void append(PaymentSettledEvent event) {
         try {
+            // 显式写租户：系统作用域会跳过 SQL 自动注入，回调/查单路径已回填支付单租户；
+            // 请求线程即登录租户。这样无论线程处于什么作用域，事件归属都正确。
             jdbc.update("""
-                    INSERT INTO t_payment_outbox (event_type, aggregate_no, payload, status, next_at)
-                    VALUES (?, ?, ?, 'PENDING', CURRENT_TIMESTAMP(3))
-                    """, event.eventType(), event.paymentNo(),
+                    INSERT INTO t_payment_outbox
+                        (tenant_id, event_type, aggregate_no, payload, status, next_at)
+                    VALUES (?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP(3))
+                    """, TenantContext.current(), event.eventType(), event.paymentNo(),
                     objectMapper.writeValueAsString(event));
         } catch (JacksonException e) {
             throw new IllegalStateException("支付事件序列化失败 paymentNo=" + event.paymentNo(), e);
@@ -56,7 +60,7 @@ public class PaymentOutboxRepository {
     /** 抢占一批到期事件：先改 SENDING 再返回，避免多实例/重入重复投递。 */
     public List<OutboxRow> claimDue(int limit) {
         List<OutboxRow> rows = jdbc.query("""
-                SELECT id, event_type, aggregate_no, payload, attempts
+                SELECT id, tenant_id, event_type, aggregate_no, payload, attempts
                 FROM t_payment_outbox
                 WHERE tenant_id >= 0 AND status = 'PENDING' AND next_at <= CURRENT_TIMESTAMP(3)
                 ORDER BY id
@@ -140,7 +144,8 @@ public class PaymentOutboxRepository {
         return value.length() <= 500 ? value : value.substring(0, 500);
     }
 
-    /** 发件箱一行。 */
-    public record OutboxRow(Long id, String eventType, String aggregateNo, String payload, int attempts) {
+    /** 发件箱一行。tenantId 用于投递时回填租户上下文（listener 的 SQL 需要正确租户）。 */
+    public record OutboxRow(Long id, String eventType, String aggregateNo, String payload,
+                            int attempts, long tenantId) {
     }
 }

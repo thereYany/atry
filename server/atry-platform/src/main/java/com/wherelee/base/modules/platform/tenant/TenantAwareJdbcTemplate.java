@@ -25,8 +25,12 @@ public class TenantAwareJdbcTemplate extends JdbcTemplate {
         this.rewriter = rewriter;
     }
 
-    private TenantSqlRewriter.RewriteResult prepare(String sql) {
-        if (!enforce) {
+    /** 包级可见：单测直接验证注入决策，不必连真实库。 */
+    TenantSqlRewriter.RewriteResult prepare(String sql) {
+        // 系统作用域 hybrid：未回填租户 = 明确的跨租户后台入口（定时任务/公开回调/发件箱投递），
+        // 放行自动注入；已回填租户 = 回到单租户语义，恢复自动注入（限定该租户）。
+        // 非系统作用域行为不变：始终注入/校验。
+        if (!enforce || (TenantContext.isSystemScope() && TenantContext.currentOrNull() == null)) {
             return new TenantSqlRewriter.RewriteResult(sql, -1);
         }
         return rewriter.rewrite(sql);

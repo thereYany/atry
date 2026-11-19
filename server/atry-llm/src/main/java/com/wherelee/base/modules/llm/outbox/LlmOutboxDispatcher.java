@@ -3,6 +3,7 @@ package com.wherelee.base.modules.llm.outbox;
 import com.wherelee.base.modules.contracts.metering.MeteringOperations;
 import com.wherelee.base.modules.contracts.metering.SubjectRef;
 import com.wherelee.base.modules.contracts.metering.UsageCommand;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -39,6 +40,12 @@ public class LlmOutboxDispatcher {
 
     @Scheduled(fixedDelayString = "${atry.llm.outbox.poll-ms:1000}")
     public void dispatch() {
+        // LLM 表当前不在内核租户表清单内，但投递器同样是后台线程：
+        // 统一按系统作用域执行，避免未来表加入清单后被默认租户 0 收窄。
+        TenantContext.runAsSystem(this::dispatchInternal);
+    }
+
+    private void dispatchInternal() {
         for (LlmOutboxRepository.OutboxRow row : repository.findDue(50)) {
             try {
                 dispatchOne(row);

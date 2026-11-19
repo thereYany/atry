@@ -203,6 +203,6 @@ class AlipayNotifyServiceTest {
 
     private PaymentOrderView order(String status) {
         return new PaymentOrderView("P-ORD1", "ORD1", "atry", "SAMPLE_ORDER", "示例订单", 1L, "CNY",
-                status, "ALIPAY", "ORD1_1", now.plusMinutes(15), null);
+                status, "ALIPAY", "ORD1_1", now.plusMinutes(15), null, 0L);
     }
 }

@@ -3,6 +3,7 @@ package com.wherelee.base.modules.payment;
 import com.wherelee.base.modules.payment.api.PaymentEventTypes;
 import com.wherelee.base.modules.payment.api.PaymentSettledEvent;
 import com.wherelee.base.modules.payment.outbox.PaymentOutboxRepository;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import com.wherelee.base.modules.platform.tracing.TraceSpans;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,11 +14,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -76,6 +79,31 @@ class PaymentQueryServiceTest {
     }
 
     @Test
+    void expiredPaymentAppendsOutboxUnderPaymentTenantAndRestoresContext() {
+        when(paymentRepository.findLatestAttemptByPaymentNo("P-ORD-1")).thenReturn(Optional.of(attempt()));
+        when(paymentGateway.query(any(PaymentOrderView.class), any())).thenReturn(
+                new PaymentGateway.PaymentQueryResult("NOT_FOUND", 19900L, "MOCK-T-1", "ACQ.TRADE_NOT_EXIST"));
+        when(paymentGateway.close(any(PaymentOrderView.class), any()))
+                .thenReturn(PaymentGateway.CloseResult.notFound("ACQ.TRADE_NOT_EXIST"));
+        when(paymentOrderRepository.markClosed("P-ORD-1")).thenReturn(1);
+        AtomicLong tenantDuringAppend = new AtomicLong(-1L);
+        doAnswer(invocation -> {
+            tenantDuringAppend.set(TenantContext.current());
+            return null;
+        }).when(outboxRepository).append(any());
+
+        TenantContext.set(5L); // 手动补偿/请求线程已有上下文
+        try {
+            assertThat(service.query(payment(LocalDateTime.now().minusMinutes(1), 7L))).isTrue();
+            assertThat(TenantContext.currentOrNull()).isEqualTo(5L);
+        } finally {
+            TenantContext.clear();
+        }
+
+        assertThat(tenantDuringAppend.get()).isEqualTo(7L);
+    }
+
+    @Test
     void pendingPaymentIsLeftAlone() {
         when(paymentRepository.findLatestAttemptByPaymentNo("P-ORD-1")).thenReturn(Optional.empty());
         when(paymentGateway.query(any(PaymentOrderView.class), eq(null))).thenReturn(
@@ -87,8 +115,12 @@ class PaymentQueryServiceTest {
     }
 
     private PaymentOrderView payment(LocalDateTime expireAt) {
+        return payment(expireAt, 0L);
+    }
+
+    private PaymentOrderView payment(LocalDateTime expireAt, long tenantId) {
         return new PaymentOrderView("P-ORD-1", "ORD-1", "atry", "SAMPLE_ORDER", "示例订单",
-                19900L, "CNY", "PAYING", "MOCK", "MOCK-1", expireAt, null);
+                19900L, "CNY", "PAYING", "MOCK", "MOCK-1", expireAt, null, tenantId);
     }
 
     private PaymentAttemptRecord attempt() {

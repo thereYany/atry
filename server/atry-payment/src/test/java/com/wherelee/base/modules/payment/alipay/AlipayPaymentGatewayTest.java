@@ -186,12 +186,12 @@ class AlipayPaymentGatewayTest {
 
     private PaymentOrderView order() {
         return new PaymentOrderView("P-ORD1", "ORD1", "atry", "SAMPLE_ORDER", "示例订单", 1L, "CNY",
-                "PAYING", "ALIPAY", null, now.plusMinutes(15), null);
+                "PAYING", "ALIPAY", null, now.plusMinutes(15), null, 0L);
     }
 
     private PaymentOrderView paidOrder() {
         return new PaymentOrderView("P-ORD1", "ORD1", "atry", "SAMPLE_ORDER", "示例订单", 1L, "CNY",
-                "PAID", "ALIPAY", "2026110522001400001", now.plusMinutes(15), now);
+                "PAID", "ALIPAY", "2026110522001400001", now.plusMinutes(15), now, 0L);
     }
 
     private PaymentAttemptRecord attempt() {

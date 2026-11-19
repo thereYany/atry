@@ -4,6 +4,7 @@ import com.wherelee.base.modules.payment.api.PaymentEventTypes;
 import com.wherelee.base.modules.payment.api.PaymentSettledEvent;
 import com.wherelee.base.modules.payment.outbox.PaymentOutboxRepository;
 import com.wherelee.base.modules.platform.alert.AlertPublisher;
+import com.wherelee.base.modules.platform.tenant.TenantContext;
 import com.wherelee.base.modules.platform.tracing.TraceSpans;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -100,14 +102,42 @@ class PaymentConfirmationServiceTest {
         assertThat(result.paymentNo()).isNull();
     }
 
+    @Test
+    void backfillsPaymentTenantDuringConfirmationAndRestoresPreviousContext() {
+        TenantContext.set(5L);
+        AtomicLong tenantDuringEvent = new AtomicLong(-1L);
+        try {
+            when(paymentOrderRepository.findByBizNo("ORD-1")).thenReturn(Optional.of(order("PAYING", 9L)));
+            when(paymentRepository.insertEvent(anyString(), anyString(), anyString(), anyString(),
+                    anyString(), eq(19900L), any())).thenAnswer(invocation -> {
+                tenantDuringEvent.set(TenantContext.current());
+                return true;
+            });
+            when(paymentRepository.findEvent("MOCK", "EVT-1")).thenReturn(Optional.of(event()));
+            when(paymentOrderRepository.findByPaymentNo("P-ORD-1")).thenReturn(Optional.of(order("PAID", 9L)));
+
+            service.accept(notification("PAYMENT_SUCCESS", 19900L));
+
+            assertThat(tenantDuringEvent.get()).isEqualTo(9L);
+            assertThat(TenantContext.currentOrNull()).isEqualTo(5L);
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
     private PaymentNotification notification(String eventType, long amount) {
         return new PaymentNotification("MOCK", "EVT-1", "ORD-1", eventType, amount, "MOCK-1", null);
     }
 
     private PaymentOrderView order(String status) {
+        return order(status, 0L);
+    }
+
+    private PaymentOrderView order(String status, long tenantId) {
         return new PaymentOrderView("P-ORD-1", "ORD-1", "atry", "SAMPLE_ORDER", "示例订单",
                 19900L, "CNY", status, "MOCK", "MOCK-1",
-                LocalDateTime.now().plusMinutes(15), "PAID".equals(status) ? LocalDateTime.now() : null);
+                LocalDateTime.now().plusMinutes(15), "PAID".equals(status) ? LocalDateTime.now() : null,
+                tenantId);
     }
 
     private PaymentEventRecord event() {

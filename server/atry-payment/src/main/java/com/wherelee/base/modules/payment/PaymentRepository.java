@@ -314,11 +314,14 @@ public class PaymentRepository {
     }
 
     public long countSettlementUndeliveredBefore(LocalDateTime cutoff) {
+        // 系统作用域内跨租户统计：NOT EXISTS 必须显式按同租户关联，避免别的租户的
+        // 已投递 outbox 事件把本租户的未投递单"抵消"掉（跨租户串单）。
         Long count = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM t_payment_order p
                 WHERE p.status = 'PAID' AND p.paid_at <= ?
                   AND NOT EXISTS (SELECT 1 FROM t_payment_outbox o
                                   WHERE o.aggregate_no = p.payment_no
+                                    AND o.tenant_id = p.tenant_id
                                     AND o.event_type = 'PAYMENT_SUCCEEDED'
                                     AND o.status = 'SENT')
                 """, Long.class, Timestamp.valueOf(cutoff));
