@@ -3,6 +3,7 @@ package com.wherelee.base.modules.contracts.metering;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 通用计量计费契约：业务/框架只通过它上报用量、预扣、结算与查询。
@@ -17,6 +18,10 @@ public interface MeteringOperations {
 
     /** 按发生时间取价格版本估算金额（用于预扣/预算检查）。 */
     BigDecimal estimateCost(String meterKey, BigDecimal quantity, Instant occurredAt);
+
+    /** 带维度（如 model）的价格匹配；rate card 的 subject_selector 可覆盖默认价。 */
+    BigDecimal estimateCost(String meterKey, BigDecimal quantity, Instant occurredAt,
+                            Map<String, String> dimensions);
 
     /** 预扣（准入）：余额/额度不足时抛出业务异常。 */
     ReservationView reserve(ReserveCommand command);

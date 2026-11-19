@@ -26,8 +26,6 @@ import java.util.Map;
 public class LlmOutboxDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(LlmOutboxDispatcher.class);
-    private static final String METER_KEY = "llm.tokens";
-
     private final LlmOutboxRepository repository;
     private final MeteringOperations metering;
     private final ObjectMapper objectMapper;
@@ -57,26 +55,35 @@ public class LlmOutboxDispatcher {
         JsonNode event = objectMapper.readTree(row.payload());
         String requestId = event.get("requestId").asString();
         JsonNode usage = event.get("usage");
-        long totalTokens = usage == null ? 0 : usage.path("totalTokens").asLong(0);
-        if (usage != null && totalTokens == 0) {
-            totalTokens = usage.path("inputTokens").asLong(0) + usage.path("outputTokens").asLong(0)
-                    + usage.path("cachedReadTokens").asLong(0) + usage.path("cachedWriteTokens").asLong(0)
-                    + usage.path("reasoningTokens").asLong(0);
-        }
+        long input = usage == null ? 0 : usage.path("inputTokens").asLong(0);
+        long output = usage == null ? 0 : usage.path("outputTokens").asLong(0);
+        long cachedRead = usage == null ? 0 : usage.path("cachedReadTokens").asLong(0);
+        long nonCachedInput = Math.max(0, input - cachedRead);
         SubjectRef subject = new SubjectRef(event.path("tenantId").asLong(0),
                 event.path("appId").asLong(0), event.path("userId").asLong(0));
         Instant occurredAt = event.has("occurredAt")
                 ? Instant.parse(event.get("occurredAt").asString()) : Instant.now();
         String provider = event.path("provider").asString("unknown");
         String model = event.path("modelServed").asString("unknown");
+        Map<String, String> dimensions = Map.of("provider", provider, "model", model);
 
+        emit(requestId, "in", "llm.input_tokens", nonCachedInput, subject, dimensions, occurredAt);
+        emit(requestId, "out", "llm.output_tokens", output, subject, dimensions, occurredAt);
+        emit(requestId, "cache", "llm.cached_read_tokens", cachedRead, subject, dimensions, occurredAt);
+    }
+
+    private void emit(String requestId, String suffix, String meterKey, long quantity, SubjectRef subject,
+                      Map<String, String> dimensions, Instant occurredAt) {
+        if (quantity <= 0) {
+            return;
+        }
         metering.recordUsage(new UsageCommand(
-                "llm-usage:" + requestId,
-                METER_KEY,
+                "llm-usage:" + requestId + ":" + suffix,
+                meterKey,
                 subject,
-                BigDecimal.valueOf(Math.max(0, totalTokens)),
+                BigDecimal.valueOf(quantity),
                 "token",
-                Map.of("provider", provider, "model", model),
+                dimensions,
                 occurredAt,
                 requestId));
     }

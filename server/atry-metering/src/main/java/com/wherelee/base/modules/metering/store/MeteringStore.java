@@ -37,6 +37,10 @@ public class MeteringStore {
     }
 
     public Optional<PriceRow> findPrice(String meterKey, Instant at) {
+        return findPrice(meterKey, at, null);
+    }
+
+    public Optional<PriceRow> findPrice(String meterKey, Instant at, String subjectSelector) {
         List<PriceRow> rows = jdbc.query("""
                         SELECT rc.id, rc.unit_price, rc.currency, pb.version
                         FROM t_metering_price_book pb
@@ -44,12 +48,14 @@ public class MeteringStore {
                         WHERE rc.meter_key = ? AND pb.status = 'ACTIVE'
                           AND pb.effective_from <= ?
                           AND (pb.effective_to IS NULL OR pb.effective_to > ?)
-                        ORDER BY pb.effective_from DESC, pb.version DESC
+                          AND (rc.subject_selector IS NULL OR rc.subject_selector = ?)
+                        ORDER BY (rc.subject_selector IS NULL) ASC, pb.effective_from DESC, pb.version DESC
                         LIMIT 1
                         """,
                 (rs, rowNum) -> new PriceRow(rs.getLong("id"), rs.getBigDecimal("unit_price"),
                         rs.getString("currency"), rs.getInt("version")),
-                meterKey, java.sql.Timestamp.from(at), java.sql.Timestamp.from(at));
+                meterKey, java.sql.Timestamp.from(at), java.sql.Timestamp.from(at),
+                subjectSelector == null ? "" : subjectSelector);
         return rows.stream().findFirst();
     }
 

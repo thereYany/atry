@@ -41,6 +41,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /**
  * LLM 调用编排（P2）：校验 → 限流/舱壁 → 熔断 → 单点重试（带预算/退避）→ 调用记录 + outbox + 日志。
@@ -68,6 +69,9 @@ public class LlmService implements LlmOperations {
 
     private static final Logger log = LoggerFactory.getLogger(LlmService.class);
     private static final String BILLING_METER = "llm.tokens";
+    private static final String INPUT_METER = "llm.input_tokens";
+    private static final String OUTPUT_METER = "llm.output_tokens";
+    private static final String CACHED_READ_METER = "llm.cached_read_tokens";
     private static final String BILLING_CURRENCY = "CNY";
 
     public LlmService(LlmProviderRegistry providerRegistry, LlmCallRepository callRepository,
@@ -273,8 +277,7 @@ public class LlmService implements LlmOperations {
             return null;
         }
         try {
-            BigDecimal estimated = estimateTokens(request);
-            BigDecimal amount = metering.estimateCost(BILLING_METER, estimated, Instant.now());
+            BigDecimal amount = estimateBudgetCost(request);
             if (amount.signum() <= 0) {
                 return null;
             }
@@ -294,8 +297,7 @@ public class LlmService implements LlmOperations {
             return;
         }
         try {
-            BigDecimal actual = metering.estimateCost(BILLING_METER,
-                    BigDecimal.valueOf(Math.max(1, usage.totalTokens())), Instant.now());
+            BigDecimal actual = actualCost(request, usage);
             metering.settle(new SettleCommand(reservationId, actual, BILLING_CURRENCY, request.requestId()));
         } catch (RuntimeException e) {
             log.warn("llm.billing.settle_failed requestId={} reservationId={} error={}",
@@ -312,12 +314,41 @@ public class LlmService implements LlmOperations {
         }
     }
 
-    private BigDecimal estimateTokens(LlmRequest request) {
+    private BigDecimal estimateBudgetCost(LlmRequest request) {
+        long input = estimateInputTokens(request);
+        long output = request.maxTokens() == null ? 128 : request.maxTokens();
+        Map<String, String> dimensions = Map.of("model", request.model());
+        try {
+            BigDecimal inputCost = metering.estimateCost(INPUT_METER, BigDecimal.valueOf(input),
+                    Instant.now(), dimensions);
+            BigDecimal outputCost = metering.estimateCost(OUTPUT_METER, BigDecimal.valueOf(output),
+                    Instant.now(), dimensions);
+            return inputCost.add(outputCost);
+        } catch (BizException e) {
+            // 未配置 token 类型粒度价格时退回总量口径，保证预扣不阻塞调用
+            return metering.estimateCost(BILLING_METER, BigDecimal.valueOf(input + output), Instant.now());
+        }
+    }
+
+    private BigDecimal actualCost(LlmRequest request, LlmUsage usage) {
+        long nonCachedInput = Math.max(0, usage.inputTokens() - usage.cachedReadTokens());
+        Map<String, String> dimensions = Map.of("model", request.model());
+        try {
+            return metering.estimateCost(INPUT_METER, BigDecimal.valueOf(nonCachedInput), Instant.now(), dimensions)
+                    .add(metering.estimateCost(OUTPUT_METER, BigDecimal.valueOf(usage.outputTokens()),
+                            Instant.now(), dimensions))
+                    .add(metering.estimateCost(CACHED_READ_METER,
+                            BigDecimal.valueOf(usage.cachedReadTokens()), Instant.now(), dimensions));
+        } catch (BizException e) {
+            return metering.estimateCost(BILLING_METER,
+                    BigDecimal.valueOf(Math.max(1, usage.totalTokens())), Instant.now());
+        }
+    }
+
+    private long estimateInputTokens(LlmRequest request) {
         int chars = request.messages().stream()
                 .mapToInt(m -> m.content() == null ? 0 : m.content().length()).sum();
-        long input = Math.max(1, (chars + 3) / 4);
-        long output = request.maxTokens() == null ? 128 : request.maxTokens();
-        return BigDecimal.valueOf(input + output);
+        return Math.max(1, (chars + 3) / 4);
     }
 
     private SubjectRef subjectOf(LlmRequest request) {

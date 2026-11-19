@@ -59,6 +59,12 @@ class UsageMeteredAspectTest {
         }
 
         @Override
+        public java.math.BigDecimal estimateCost(String meterKey, java.math.BigDecimal quantity, Instant occurredAt,
+                                                 java.util.Map<String, String> dimensions) {
+            return java.math.BigDecimal.ZERO;
+        }
+
+        @Override
         public ReservationView reserve(ReserveCommand command) {
             return null;
         }

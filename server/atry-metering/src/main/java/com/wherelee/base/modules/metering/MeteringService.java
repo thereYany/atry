@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /**
  * P4：通用计量计费核心。
@@ -45,7 +46,8 @@ public class MeteringService implements MeteringOperations {
         if (!store.insertUsage(command)) {
             return; // 幂等：重复 eventId 不重复入账
         }
-        MeteringStore.PriceRow price = store.findPrice(command.meterKey(), command.occurredAt())
+        String model = command.dimensions() == null ? null : command.dimensions().get("model");
+        MeteringStore.PriceRow price = store.findPrice(command.meterKey(), command.occurredAt(), model)
                 .orElseThrow(() -> new BizException(HttpStatus.CONFLICT,
                         "没有生效价格：meter=" + command.meterKey()));
         BigDecimal amount = command.quantity().multiply(price.unitPrice()).setScale(6, RoundingMode.CEILING);
@@ -59,10 +61,17 @@ public class MeteringService implements MeteringOperations {
 
     @Override
     public BigDecimal estimateCost(String meterKey, BigDecimal quantity, Instant occurredAt) {
+        return estimateCost(meterKey, quantity, occurredAt, Map.of());
+    }
+
+    @Override
+    public BigDecimal estimateCost(String meterKey, BigDecimal quantity, Instant occurredAt,
+                                   Map<String, String> dimensions) {
         if (meterKey == null || meterKey.isBlank() || quantity == null || occurredAt == null) {
             throw BizException.badRequest("estimateCost 参数不完整");
         }
-        MeteringStore.PriceRow price = store.findPrice(meterKey, occurredAt)
+        String model = dimensions == null ? null : dimensions.get("model");
+        MeteringStore.PriceRow price = store.findPrice(meterKey, occurredAt, model)
                 .orElseThrow(() -> new BizException(HttpStatus.CONFLICT, "没有生效价格：meter=" + meterKey));
         return quantity.multiply(price.unitPrice()).setScale(6, RoundingMode.CEILING);
     }

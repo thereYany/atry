@@ -56,12 +56,9 @@ class LlmBillingIntegrationTest extends KernelIntegrationTestSupport {
         assertThat(count("t_metering_ledger", "biz_no = ?", "settle:llm:req-p4-billing")).isEqualTo(1);
 
         // outbox 异步投递到 metering：用量事件 + 计价结果
-        waitUntil(() -> count("t_metering_usage_event", "event_id = ?", "llm-usage:req-p4-billing") == 1);
-        long tokens = jdbc.queryForObject(
-                "SELECT quantity FROM t_metering_usage_event WHERE event_id = ?",
-                Long.class, "llm-usage:req-p4-billing");
-        assertThat(tokens).isEqualTo(response.usage().totalTokens());
-        assertThat(count("t_metering_charge", "event_id = ?", "llm-usage:req-p4-billing")).isEqualTo(1);
+        waitUntil(() -> count("t_metering_usage_event", "source_ref = ?", "req-p4-billing") == 2);
+        assertThat(count("t_metering_usage_event", "source_ref = ?", "req-p4-billing")).isEqualTo(2);
+        assertThat(count("t_metering_charge", "event_id LIKE ?", "llm-usage:req-p4-billing:%")).isEqualTo(2);
         assertThat(jdbc.queryForObject(
                 "SELECT status FROM t_llm_outbox WHERE aggregate_id = ?", String.class, "req-p4-billing"))
                 .isEqualTo("SENT");
