@@ -213,6 +213,14 @@ atry:
     outbox:
       enabled: ${ATRY_LLM_OUTBOX_ENABLED:true}
       poll-ms: ${ATRY_LLM_OUTBOX_POLL_MS:1000}
+    deepseek:
+      enabled: ${DEEPSEEK_ENABLED:false}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      default-model: ${DEEPSEEK_DEFAULT_MODEL:deepseek-flash}
+      thinking-disabled: ${DEEPSEEK_THINKING_DISABLED:true}
+      connect-timeout-ms: ${DEEPSEEK_CONNECT_TIMEOUT_MS:5000}
+      total-timeout-ms: ${DEEPSEEK_TOTAL_TIMEOUT_MS:600000}
   metering:
     expiry:
       enabled: ${ATRY_METERING_EXPIRY_ENABLED:true}
