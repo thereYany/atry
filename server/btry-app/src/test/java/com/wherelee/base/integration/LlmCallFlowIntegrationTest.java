@@ -9,6 +9,7 @@ import com.wherelee.base.modules.contracts.llm.LlmResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
@@ -23,6 +24,9 @@ class LlmCallFlowIntegrationTest extends KernelIntegrationTestSupport {
 
     @Autowired
     private LlmOperations llm;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void cleanLlmTables() {
@@ -59,6 +63,10 @@ class LlmCallFlowIntegrationTest extends KernelIntegrationTestSupport {
                 "SELECT event_type FROM t_llm_outbox WHERE aggregate_id = ?",
                 String.class, "req-p1-success")).isEqualTo("LLM_CALL_COMPLETED");
         assertThat(payload).contains("req-p1-success").doesNotContain("hello");
+        assertThat(meterRegistry.get("atry.llm.calls").tag("status", "SUCCESS").counter().count())
+                .isGreaterThanOrEqualTo(1);
+        assertThat(meterRegistry.get("atry.llm.tokens").tag("token_type", "input").counter().count())
+                .isGreaterThanOrEqualTo(2);
     }
 
     @Test

@@ -41,6 +41,7 @@ public class LlmStreamExecutor {
         Future<?> worker = executor.submit(() -> produce(provider, request, queue, startedAt));
         int chunks = 0;
         int chars = 0;
+        Long ttftMs = null;
         try {
             Event first = queue.poll(Math.max(1, Math.min(firstTokenMs, totalDeadline - System.currentTimeMillis())),
                     TimeUnit.MILLISECONDS);
@@ -63,6 +64,7 @@ public class LlmStreamExecutor {
                         System.currentTimeMillis() - startedAt);
             }
             chunks++;
+            ttftMs = System.currentTimeMillis() - startedAt;
             String delta = ((ChunkEvent) first).delta();
             chars += delta.length();
             callerSink.onChunk(delta);
@@ -88,7 +90,7 @@ public class LlmStreamExecutor {
                 } else if (event instanceof CompleteEvent complete) {
                     callerSink.onComplete(complete.usage(), complete.finishReason());
                     return StreamOutcome.completed(complete.usage(), complete.finishReason(), chunks,
-                            System.currentTimeMillis() - startedAt);
+                            System.currentTimeMillis() - startedAt, ttftMs);
                 } else if (event instanceof ErrorEvent errorEvent) {
                     callerSink.onError(errorEvent.error());
                     return StreamOutcome.failed(errorEvent.error(), estimate(request, chunks, chars), chunks,

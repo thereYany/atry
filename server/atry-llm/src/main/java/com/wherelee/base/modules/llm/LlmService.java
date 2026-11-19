@@ -23,11 +23,11 @@ import com.wherelee.base.modules.llm.resilience.LlmCircuitBreaker;
 import com.wherelee.base.modules.llm.resilience.LlmRateLimiter;
 import com.wherelee.base.modules.llm.resilience.LlmRetryBudget;
 import com.wherelee.base.modules.llm.resilience.LlmRetryPolicy;
-import com.wherelee.base.modules.platform.common.BizException;
+import com.wherelee.base.modules.llm.observability.LlmEventLogger;
+import com.wherelee.base.modules.llm.observability.LlmMetrics;
+import com.wherelee.base.modules.llm.observability.LlmSpanTags;
 import com.wherelee.base.modules.platform.tracing.TraceSpans;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
+import io.micrometer.tracing.Span;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -42,8 +42,6 @@ import java.util.List;
 @Service
 public class LlmService implements LlmOperations {
 
-    private static final Logger log = LoggerFactory.getLogger(LlmService.class);
-
     private final LlmProviderRegistry providerRegistry;
     private final LlmCallRepository callRepository;
     private final LlmCallWriter callWriter;
@@ -55,13 +53,15 @@ public class LlmService implements LlmOperations {
     private final LlmCircuitBreaker circuitBreaker;
     private final LlmRateLimiter rateLimiter;
     private final LlmProperties.Timeouts timeouts;
+    private final LlmEventLogger events;
+    private final LlmMetrics metrics;
 
     public LlmService(LlmProviderRegistry providerRegistry, LlmCallRepository callRepository,
                       LlmCallWriter callWriter, TraceSpans traceSpans, LlmCallExecutor executor,
                       LlmStreamExecutor streamExecutor,
                       LlmRetryPolicy retryPolicy, LlmRetryBudget retryBudget,
                       LlmCircuitBreaker circuitBreaker, LlmRateLimiter rateLimiter,
-                      LlmProperties properties) {
+                      LlmProperties properties, LlmEventLogger events, LlmMetrics metrics) {
         this.providerRegistry = providerRegistry;
         this.callRepository = callRepository;
         this.callWriter = callWriter;
@@ -73,6 +73,8 @@ public class LlmService implements LlmOperations {
         this.circuitBreaker = circuitBreaker;
         this.rateLimiter = rateLimiter;
         this.timeouts = properties.timeouts();
+        this.events = events;
+        this.metrics = metrics;
     }
 
     @Override
@@ -88,9 +90,7 @@ public class LlmService implements LlmOperations {
         long deadlineAt = deadlineMs(request);
         int attempts = 0;
         String permit = null;
-        log.info("llm.call.started requestId={} tenantId={} appId={} userId={} provider={} model={} stream=false",
-                request.requestId(), request.tenantId(), request.appId(), request.userId(),
-                provider.id(), request.model());
+        events.started(request, provider.id());
         try {
             permit = rateLimiter.acquire(provider.id(), request.tenantId());
             circuitBreaker.acquire(circuitKey);
@@ -110,7 +110,7 @@ public class LlmService implements LlmOperations {
                                     "llm.provider", provider.id(),
                                     "llm.model", request.model(),
                                     "llm.attempt", Integer.toString(attempt)),
-                            () -> executor.invoke(provider, request, attemptTimeout));
+                            span -> invokeWithSpan(span, provider, request, attemptTimeout));
                     long latencyMs = System.currentTimeMillis() - startedAt;
                     LlmUsage usage = response.usage() == null
                             ? new LlmUsage(0, 0, 0, 0, 0, LlmUsage.Source.ESTIMATED)
@@ -122,10 +122,8 @@ public class LlmService implements LlmOperations {
                             new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
                                     request.userId(), provider.id(), response.modelServed(), usage,
                                     latencyMs, Instant.now()));
-                    log.info("llm.call.finished requestId={} provider={} model={} attempt={} inputTokens={} "
-                                    + "outputTokens={} usageSource={} latencyMs={} status=SUCCESS",
-                            request.requestId(), provider.id(), response.modelServed(), attempt,
-                            usage.inputTokens(), usage.outputTokens(), usage.source(), latencyMs);
+                    events.finished(request, provider.id(), response, usage, latencyMs, attempts, false);
+                    metrics.success(provider.id(), request.model(), false, latencyMs, usage, null);
                     return response;
                 } catch (LlmException e) {
                     last = e;
@@ -136,10 +134,11 @@ public class LlmService implements LlmOperations {
                             && !circuitBreaker.isOpen(circuitKey)
                             && retryBudget.tryRetry(provider.id())
                             && System.currentTimeMillis() + backoff < deadlineAt;
-                    log.warn("llm.attempt.failed requestId={} provider={} model={} attempt={} category={} "
-                                    + "retryable={} willRetry={} backoffMs={}",
-                            request.requestId(), provider.id(), request.model(), attempt,
-                            e.error().category(), e.error().retryable(), canRetry, canRetry ? backoff : 0);
+                    events.attemptFailed(request, provider.id(), e.error(), attempt, canRetry,
+                            canRetry ? backoff : 0);
+                    if (canRetry) {
+                        metrics.retry(provider.id(), true);
+                    }
                     if (!canRetry) {
                         break;
                     }
@@ -151,18 +150,16 @@ public class LlmService implements LlmOperations {
         } catch (LlmException e) {
             long latencyMs = System.currentTimeMillis() - startedAt;
             callWriter.writeFailure(failureRecord(request, provider.id(), e.error(), latencyMs, attempts));
-            log.error("llm.call.failed requestId={} provider={} model={} category={} providerCode={} "
-                            + "retryable={} billable={} attempts={} latencyMs={}",
-                    request.requestId(), provider.id(), request.model(), e.error().category(),
-                    e.error().providerCode(), e.error().retryable(), e.error().billable(), attempts, latencyMs);
+            events.failed(request, provider.id(), e.error(), latencyMs, attempts, false);
+            metrics.failure(provider.id(), request.model(), false, e.error(), latencyMs);
             throw e;
         } catch (RuntimeException e) {
             long latencyMs = System.currentTimeMillis() - startedAt;
             LlmError error = new LlmError(LlmErrorCategory.INTERNAL, "UNEXPECTED", false, false,
                     "LLM 调用内部错误：" + e.getClass().getSimpleName());
             callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, attempts));
-            log.error("llm.call.failed requestId={} provider={} model={} category=INTERNAL attempts={} latencyMs={}",
-                    request.requestId(), provider.id(), request.model(), attempts, latencyMs, e);
+            events.failed(request, provider.id(), error, latencyMs, attempts, false);
+            metrics.failure(provider.id(), request.model(), false, error, latencyMs);
             throw new LlmException(error, e);
         } finally {
             if (permit != null) {
@@ -184,9 +181,7 @@ public class LlmService implements LlmOperations {
         long deadlineAt = deadlineMs(request);
         String permit = null;
         boolean persisted = false;
-        log.info("llm.call.started requestId={} tenantId={} appId={} userId={} provider={} model={} stream=true",
-                request.requestId(), request.tenantId(), request.appId(), request.userId(),
-                provider.id(), request.model());
+        events.started(request, provider.id());
         try {
             permit = rateLimiter.acquire(provider.id(), request.tenantId());
             circuitBreaker.acquire(circuitKey);
@@ -195,8 +190,7 @@ public class LlmService implements LlmOperations {
                             "llm.provider", provider.id(),
                             "llm.model", request.model(),
                             "llm.stream", "true"),
-                    () -> streamExecutor.stream(provider, request, sink,
-                            timeouts.firstTokenMs(), timeouts.chunkIdleMs(), timeouts.totalMs(), deadlineAt));
+                    span -> streamWithSpan(span, provider, request, sink, deadlineAt));
             long latencyMs = System.currentTimeMillis() - startedAt;
             if (outcome.completed()) {
                 LlmUsage usage = outcome.usage() == null
@@ -210,10 +204,9 @@ public class LlmService implements LlmOperations {
                         new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
                                 request.userId(), provider.id(), request.model(), usage, latencyMs, Instant.now()));
                 persisted = true;
-                log.info("llm.call.finished requestId={} provider={} model={} stream=true chunks={} "
-                                + "inputTokens={} outputTokens={} usageSource={} latencyMs={} status=SUCCESS",
-                        request.requestId(), provider.id(), request.model(), outcome.chunks(),
-                        usage.inputTokens(), usage.outputTokens(), usage.source(), latencyMs);
+                events.finished(request, provider.id(), responseOf(outcome, request.model()), usage,
+                        latencyMs, 1, true);
+                metrics.success(provider.id(), request.model(), true, latencyMs, usage, outcome.ttftMs());
                 return;
             }
             LlmError error = outcome.error();
@@ -223,20 +216,15 @@ public class LlmService implements LlmOperations {
             callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 1,
                     outcome.usage(), status));
             persisted = true;
-            log.error("llm.call.failed requestId={} provider={} model={} stream=true category={} "
-                            + "providerCode={} chunks={} partialTokens={} latencyMs={} status={}",
-                    request.requestId(), provider.id(), request.model(), error.category(),
-                    error.providerCode(), outcome.chunks(),
-                    outcome.usage() == null ? 0 : outcome.usage().totalTokens(), latencyMs, status);
+            events.failed(request, provider.id(), error, latencyMs, 1, true);
+            metrics.failure(provider.id(), request.model(), true, error, latencyMs);
             throw new LlmException(error);
         } catch (LlmException e) {
             if (!persisted) {
                 long latencyMs = System.currentTimeMillis() - startedAt;
                 callWriter.writeFailure(failureRecord(request, provider.id(), e.error(), latencyMs, 0));
-                log.error("llm.call.failed requestId={} provider={} model={} stream=true category={} "
-                                + "providerCode={} attempts=0 latencyMs={}",
-                        request.requestId(), provider.id(), request.model(), e.error().category(),
-                        e.error().providerCode(), latencyMs);
+                events.failed(request, provider.id(), e.error(), latencyMs, 0, true);
+                metrics.failure(provider.id(), request.model(), true, e.error(), latencyMs);
             }
             throw e;
         } catch (RuntimeException e) {
@@ -246,14 +234,39 @@ public class LlmService implements LlmOperations {
             if (!persisted) {
                 callWriter.writeFailure(failureRecord(request, provider.id(), error, latencyMs, 0));
             }
-            log.error("llm.call.failed requestId={} provider={} model={} stream=true category=INTERNAL latencyMs={}",
-                    request.requestId(), provider.id(), request.model(), latencyMs, e);
+            events.failed(request, provider.id(), error, latencyMs, 0, true);
+            metrics.failure(provider.id(), request.model(), true, error, latencyMs);
             throw new LlmException(error, e);
         } finally {
             if (permit != null) {
                 rateLimiter.release(permit);
             }
         }
+    }
+
+    private LlmResponse invokeWithSpan(Span span, LlmProvider provider, LlmRequest request, long timeoutMs) {
+        LlmSpanTags.request(span, request, provider.id());
+        try {
+            LlmResponse response = executor.invoke(provider, request, timeoutMs);
+            LlmSpanTags.response(span, response, response.usage());
+            return response;
+        } catch (LlmException e) {
+            LlmSpanTags.error(span, e.error());
+            throw e;
+        }
+    }
+
+    private StreamOutcome streamWithSpan(Span span, LlmProvider provider, LlmRequest request,
+                                         LlmStreamSink sink, long deadlineAt) {
+        LlmSpanTags.request(span, request, provider.id());
+        StreamOutcome outcome = streamExecutor.stream(provider, request, sink,
+                timeouts.firstTokenMs(), timeouts.chunkIdleMs(), timeouts.totalMs(), deadlineAt);
+        if (outcome.completed()) {
+            LlmSpanTags.response(span, null, outcome.usage());
+        } else {
+            LlmSpanTags.error(span, outcome.error());
+        }
+        return outcome;
     }
 
     private LlmResponse responseOf(StreamOutcome outcome, String modelServed) {

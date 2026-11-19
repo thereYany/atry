@@ -14,7 +14,7 @@ atry 是一个**与业务无关的 Java 业务基座**（Java 21 / Spring Boot 4
 | `btry-identity` | 账号、登录/JWT、修改密码、登录限流、RBAC（角色/权限码）、通用用户邀请（roleCode） |
 | `btry-payment` | 支付单/支付尝试/回调事件/事务性发件箱（崩溃回收）/退款单与重试状态/渠道关单/主动查单轮询/T+1 账单对账；Mock 与支付宝（公钥模式 v2 SDK）渠道适配；`PaymentSettledEvent` 对外事件。退款编排由业务侧驱动 |
 | `btry-app` | 内核演示宿主：启动类、内核种子（admin）、运营端账号/角色/对账接口、支付告警巡检 |
-| `atry-llm` | **新增（P2 完成）**：provider 抽象 + mock 闭环、调用记录/outbox、超时/重试/熔断/限流/舱壁、流式两阶段超时；观测/AOP 后续迭代 |
+| `atry-llm` | **新增（P3 完成）**：provider 抽象 + mock 闭环、调用记录/outbox、超时/重试/熔断/限流/舱壁、流式、结构化日志/指标/OTel/注解 |
 | `atry-metering` | **新增（P0 骨架）**：用量事件、计量/计价、预扣/结算、账本/账单/对账；token 只是 metric 之一 |
 
 依赖方向：`app → identity/payment → platform/contracts`；`platform` 不依赖任何业务；支付不认识任何业务，只认 `bizType + bizNo`，业务侧实现 `PaymentSettledListener` 自行履约。
