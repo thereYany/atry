@@ -71,3 +71,6 @@ atry:
   llm:
     outbox:
       enabled: false
+  metering:
+    expiry:
+      enabled: false

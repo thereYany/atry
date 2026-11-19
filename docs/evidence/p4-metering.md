@@ -1,7 +1,6 @@
 # P4 验收记录：通用计量计费（进行中，2026-11-19）
 
-> 已完成：事件/计价/幂等、账户/冻结、预扣/结算/释放、账本、并发防超卖、LLM 预扣联动、LLM outbox → metering 用量投递。
-> 待做：账单/出账、对账 L1–L3、额度/充值管理 API、过期预扣回收。
+> P4 已完成：事件/计价/幂等、账户/冻结、预扣/结算/释放、账本、并发防超卖、LLM 预扣联动、outbox 投递、充值、出账、对账 L1–L3、过期预扣回收。
 
 ## 1. 数据与种子
 
@@ -42,9 +41,20 @@ IT_DB_URL=...atry_it... mvn -B -Pintegration -pl btry-app \
   -Dtest='MeteringCoreIntegrationTest,LlmBillingIntegrationTest' test
 ```
 
-## 6. 已知限制 / 后续
+## 6. 运营面（P4 收尾）
 
-- 未实现：账单/出账、对账 L1–L3、额度/充值管理 API、过期预扣定时回收、多币种/汇率；
-- `settle` 失败目前记 warning 不影响已完成的调用返回（避免"模型已生成却报错"），靠对账补偿；
+- 充值：`MeteringAdminOperations.recharge`，`bizNo` 幂等，写 CREDIT 账本；
+- 出账：`generateInvoice(subject, from, to, currency)` 聚合期间 Charge，写 invoice + items，状态 `FINALIZED`（同一账期幂等）；无计费结果返回 null；
+- 对账 L1–L3：
+  - L1 事件/Charge 数量与孤儿（EVENT_WITHOUT_CHARGE / CHARGE_WITHOUT_EVENT）；
+  - L2 期间 Charge 总额 vs 结算流水总额（AMOUNT_MISMATCH）；
+  - L3 每个账户 balance vs 账本派生值（BALANCE_MISMATCH）；
+  - 每次对账落 `t_metering_recon_run/diff`，可追溯；
+- 过期预扣：`MeteringAdminOperations.expireReservations` + 定时任务（默认 60s），解冻并置 `EXPIRED`。
+
+## 7. 已知限制 / 后续
+
+- `settle` 失败记 warning 不影响已完成调用返回（避免"模型已生成却报错"），靠对账补偿；
 - outbox 单实例轮询；多实例需抢占锁/MQ；
-- 价格 seed 仅演示，真实价格在 P5 按 DeepSeek 官方价建版本。
+- 价格 seed 仅演示，真实价格在 P5 按 DeepSeek 官方价建版本；
+- 多币种/汇率、发票税务、充值退款申请不在本期。

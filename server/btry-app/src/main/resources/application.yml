@@ -213,3 +213,7 @@ atry:
     outbox:
       enabled: ${ATRY_LLM_OUTBOX_ENABLED:true}
       poll-ms: ${ATRY_LLM_OUTBOX_POLL_MS:1000}
+  metering:
+    expiry:
+      enabled: ${ATRY_METERING_EXPIRY_ENABLED:true}
+      poll-ms: ${ATRY_METERING_EXPIRY_POLL_MS:60000}

@@ -37,7 +37,8 @@ public abstract class KernelIntegrationTestSupport {
                 "t_payment_outbox", "t_recon_task", "t_recon_diff", "t_channel_bill",
                 "t_llm_call_record", "t_llm_outbox",
                 "t_metering_usage_event", "t_metering_charge", "t_metering_account",
-                "t_metering_ledger", "t_metering_reservation"
+                "t_metering_ledger", "t_metering_reservation",
+                "t_metering_invoice_item", "t_metering_invoice", "t_metering_recon_diff", "t_metering_recon_run"
         }) {
             jdbc.execute("TRUNCATE TABLE " + table);
         }
