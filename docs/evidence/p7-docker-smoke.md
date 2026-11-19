@@ -58,3 +58,13 @@ sudo docker compose --env-file .env.docker ps
 - 镜像未推送到 registry（本地 `atry-backend:latest`）；
 - 容器内默认关闭 tracing（`TRACING_ENABLED=false`），需要 Jaeger 时用 `compose.observability.yml`；
 - compose 的 MySQL/Redis 为单实例容器，生产化需按 04/05 的多实例与备份方案演进。
+
+## 5. 对外演示入口（8443，2026-11-20 追加）
+
+本机 nginx 新增 `8443` HTTPS server（`/etc/nginx/conf.d/atry-8443.conf`），复用现有证书（IP SAN = 118.31.111.223）：
+
+- 只反代 `/api/auth/*` 与 `/api/demo/*`，管理端/支付接口一律 404；
+- SSE 路径关闭 `proxy_buffering`、`proxy_read_timeout 600s`；
+- UFW 已放行 8443/tcp；**云安全组是否放行 8443 需在控制台确认**（机器内不可见，故外网可达未验证）；
+- 本地验证：登录 / 余额 / 同步调用 / SSE 8×delta 全通，`/api/admin/users` 返回 404；
+- 演示账号 `admin` 密码已轮换为强随机值（仅记录在 `.env.docker` 600 权限，不入仓、不入日志）。
