@@ -1,5 +1,7 @@
 package com.wherelee.base.modules.contracts.metering;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -12,6 +14,9 @@ public interface MeteringOperations {
 
     /** 上报用量（幂等键 eventId；重复上报不重复入账）。 */
     void recordUsage(UsageCommand command);
+
+    /** 按发生时间取价格版本估算金额（用于预扣/预算检查）。 */
+    BigDecimal estimateCost(String meterKey, BigDecimal quantity, Instant occurredAt);
 
     /** 预扣（准入）：余额/额度不足时抛出业务异常。 */
     ReservationView reserve(ReserveCommand command);

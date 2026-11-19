@@ -38,7 +38,7 @@ class LlmCallFlowIntegrationTest extends KernelIntegrationTestSupport {
     void mockCallPersistsCallRecordAndCompletionOutbox() {
         LlmRequest request = new LlmRequest("req-p1-success", 0, 0, 7, "mock-small",
                 List.of(new ChatMessage("user", "hello")), 64, false,
-                Instant.now().plusSeconds(30), "budget-test");
+                Instant.now().plusSeconds(30), null);
 
         LlmResponse response = llm.invoke(request);
 

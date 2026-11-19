@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +51,11 @@ class UsageMeteredAspectTest {
         @Override
         public void recordUsage(UsageCommand command) {
             this.lastCommand = command;
+        }
+
+        @Override
+        public java.math.BigDecimal estimateCost(String meterKey, java.math.BigDecimal quantity, Instant occurredAt) {
+            return java.math.BigDecimal.ZERO;
         }
 
         @Override

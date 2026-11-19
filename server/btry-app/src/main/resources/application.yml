@@ -210,3 +210,6 @@ atry:
       tenant-rpm: ${ATRY_LLM_TENANT_RPM:600}
       provider-rpm: ${ATRY_LLM_PROVIDER_RPM:6000}
       max-in-flight: ${ATRY_LLM_MAX_IN_FLIGHT:100}
+    outbox:
+      enabled: ${ATRY_LLM_OUTBOX_ENABLED:true}
+      poll-ms: ${ATRY_LLM_OUTBOX_POLL_MS:1000}

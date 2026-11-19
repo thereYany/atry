@@ -66,3 +66,8 @@ logging:
   level:
     root: warn
     com.wherelee.base: warn
+
+atry:
+  llm:
+    outbox:
+      enabled: false

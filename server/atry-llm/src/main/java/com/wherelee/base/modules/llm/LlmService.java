@@ -10,6 +10,11 @@ import com.wherelee.base.modules.contracts.llm.LlmRequest;
 import com.wherelee.base.modules.contracts.llm.LlmResponse;
 import com.wherelee.base.modules.contracts.llm.LlmStreamSink;
 import com.wherelee.base.modules.contracts.llm.LlmUsage;
+import com.wherelee.base.modules.contracts.metering.MeteringOperations;
+import com.wherelee.base.modules.contracts.metering.ReleaseCommand;
+import com.wherelee.base.modules.contracts.metering.ReserveCommand;
+import com.wherelee.base.modules.contracts.metering.SettleCommand;
+import com.wherelee.base.modules.contracts.metering.SubjectRef;
 import com.wherelee.base.modules.llm.call.LlmCallRecord;
 import com.wherelee.base.modules.llm.call.LlmCallRepository;
 import com.wherelee.base.modules.llm.call.LlmCallWriter;
@@ -27,9 +32,13 @@ import com.wherelee.base.modules.llm.observability.LlmEventLogger;
 import com.wherelee.base.modules.llm.observability.LlmMetrics;
 import com.wherelee.base.modules.llm.observability.LlmSpanTags;
 import com.wherelee.base.modules.platform.tracing.TraceSpans;
+import com.wherelee.base.modules.platform.common.BizException;
 import io.micrometer.tracing.Span;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -55,13 +64,19 @@ public class LlmService implements LlmOperations {
     private final LlmProperties.Timeouts timeouts;
     private final LlmEventLogger events;
     private final LlmMetrics metrics;
+    private final MeteringOperations metering;
+
+    private static final Logger log = LoggerFactory.getLogger(LlmService.class);
+    private static final String BILLING_METER = "llm.tokens";
+    private static final String BILLING_CURRENCY = "CNY";
 
     public LlmService(LlmProviderRegistry providerRegistry, LlmCallRepository callRepository,
                       LlmCallWriter callWriter, TraceSpans traceSpans, LlmCallExecutor executor,
                       LlmStreamExecutor streamExecutor,
                       LlmRetryPolicy retryPolicy, LlmRetryBudget retryBudget,
                       LlmCircuitBreaker circuitBreaker, LlmRateLimiter rateLimiter,
-                      LlmProperties properties, LlmEventLogger events, LlmMetrics metrics) {
+                      LlmProperties properties, LlmEventLogger events, LlmMetrics metrics,
+                      MeteringOperations metering) {
         this.providerRegistry = providerRegistry;
         this.callRepository = callRepository;
         this.callWriter = callWriter;
@@ -75,6 +90,7 @@ public class LlmService implements LlmOperations {
         this.timeouts = properties.timeouts();
         this.events = events;
         this.metrics = metrics;
+        this.metering = metering;
     }
 
     @Override
@@ -90,8 +106,11 @@ public class LlmService implements LlmOperations {
         long deadlineAt = deadlineMs(request);
         int attempts = 0;
         String permit = null;
+        String reservationId = null;
+        boolean settled = false;
         events.started(request, provider.id());
         try {
+            reservationId = reserveBudget(request);
             permit = rateLimiter.acquire(provider.id(), request.tenantId());
             circuitBreaker.acquire(circuitKey);
             LlmException last = null;
@@ -122,6 +141,8 @@ public class LlmService implements LlmOperations {
                             new LlmCallCompleted(request.requestId(), request.tenantId(), request.appId(),
                                     request.userId(), provider.id(), response.modelServed(), usage,
                                     latencyMs, Instant.now()));
+                    settleBudget(reservationId, request, usage);
+                    settled = true;
                     events.finished(request, provider.id(), response, usage, latencyMs, attempts, false);
                     metrics.success(provider.id(), request.model(), false, latencyMs, usage, null);
                     return response;
@@ -164,6 +185,9 @@ public class LlmService implements LlmOperations {
         } finally {
             if (permit != null) {
                 rateLimiter.release(permit);
+            }
+            if (reservationId != null && !settled) {
+                releaseBudget(reservationId);
             }
         }
     }
@@ -242,6 +266,62 @@ public class LlmService implements LlmOperations {
                 rateLimiter.release(permit);
             }
         }
+    }
+
+    private String reserveBudget(LlmRequest request) {
+        if (request.budgetRef() == null || request.budgetRef().isBlank()) {
+            return null;
+        }
+        try {
+            BigDecimal estimated = estimateTokens(request);
+            BigDecimal amount = metering.estimateCost(BILLING_METER, estimated, Instant.now());
+            if (amount.signum() <= 0) {
+                return null;
+            }
+            String reservationId = "llm:" + request.requestId();
+            metering.reserve(new ReserveCommand(reservationId, subjectOf(request), amount, BILLING_CURRENCY,
+                    Instant.now().plusMillis(timeouts.totalMs()), request.requestId()));
+            return reservationId;
+        } catch (BizException e) {
+            LlmError error = new LlmError(LlmErrorCategory.QUOTA_EXHAUSTED, null, false, false,
+                    "预算预扣失败：" + e.getMessage());
+            throw new LlmException(error, e);
+        }
+    }
+
+    private void settleBudget(String reservationId, LlmRequest request, LlmUsage usage) {
+        if (reservationId == null) {
+            return;
+        }
+        try {
+            BigDecimal actual = metering.estimateCost(BILLING_METER,
+                    BigDecimal.valueOf(Math.max(1, usage.totalTokens())), Instant.now());
+            metering.settle(new SettleCommand(reservationId, actual, BILLING_CURRENCY, request.requestId()));
+        } catch (RuntimeException e) {
+            log.warn("llm.billing.settle_failed requestId={} reservationId={} error={}",
+                    request.requestId(), reservationId, e.getClass().getSimpleName());
+        }
+    }
+
+    private void releaseBudget(String reservationId) {
+        try {
+            metering.release(new ReleaseCommand(reservationId, "llm call failed"));
+        } catch (RuntimeException e) {
+            log.warn("llm.billing.release_failed reservationId={} error={}",
+                    reservationId, e.getClass().getSimpleName());
+        }
+    }
+
+    private BigDecimal estimateTokens(LlmRequest request) {
+        int chars = request.messages().stream()
+                .mapToInt(m -> m.content() == null ? 0 : m.content().length()).sum();
+        long input = Math.max(1, (chars + 3) / 4);
+        long output = request.maxTokens() == null ? 128 : request.maxTokens();
+        return BigDecimal.valueOf(input + output);
+    }
+
+    private SubjectRef subjectOf(LlmRequest request) {
+        return new SubjectRef(request.tenantId(), request.appId(), request.userId());
     }
 
     private LlmResponse invokeWithSpan(Span span, LlmProvider provider, LlmRequest request, long timeoutMs) {
