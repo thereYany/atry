@@ -3,9 +3,9 @@ server:
 
 spring:
   application:
-    name: btry-template
+    name: atry-template
   datasource:
-    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/btry_template?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/atry_template?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:root}
   data:
@@ -21,8 +21,8 @@ app:
   jwt:
     secret: ${JWT_SECRET:template-demo-jwt-secret-change-before-production-2026}
     ttl-minutes: ${JWT_TTL_MINUTES:10080}
-    issuer: ${JWT_ISSUER:btry}
-    audience: ${JWT_AUDIENCE:btry-web}
+    issuer: ${JWT_ISSUER:atry}
+    audience: ${JWT_AUDIENCE:atry-web}
   payment:
     provider: mock
     mock-enabled: true

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # atry P6 一键演示：登录 → 一次 LLM 调用（用量/成本）→ 余额扣减 → 最近用量事件。
 #
-# 依赖：curl、python3；默认连本地 btry-app（http://127.0.0.1:8084）。
+# 依赖：curl、python3；默认连本地 atry-app（http://127.0.0.1:8084）。
 # 用法：
 #   docs/bench/p6-demo.sh
 #   DEMO_BASE=http://127.0.0.1:8084 DEMO_ADMIN_PASSWORD='Demo1Pass!' docs/bench/p6-demo.sh

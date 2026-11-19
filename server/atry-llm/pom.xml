@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.wherelee</groupId>
-        <artifactId>btry-parent</artifactId>
+        <artifactId>atry-parent</artifactId>
         <version>0.1.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
@@ -15,12 +15,12 @@
     <dependencies>
         <dependency>
             <groupId>com.wherelee</groupId>
-            <artifactId>btry-platform</artifactId>
+            <artifactId>atry-platform</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.wherelee</groupId>
-            <artifactId>btry-contracts</artifactId>
+            <artifactId>atry-contracts</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

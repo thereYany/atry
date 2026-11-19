@@ -13,6 +13,6 @@ public class DemoController {
     @GetMapping("/api/demo/ping")
     @RequirePermission("admin:user:manage")
     public Map<String, Object> ping() {
-        return Map.of("status", "ok", "app", "btry-template");
+        return Map.of("status", "ok", "app", "atry-template");
     }
 }

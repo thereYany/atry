@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${IT_DB_URL:jdbc:mysql://127.0.0.1:3306/btry_template?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
-    username: ${IT_DB_USER:btry}
-    password: ${IT_DB_PASSWORD:btrypass}
+    url: ${IT_DB_URL:jdbc:mysql://127.0.0.1:3306/atry_template?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${IT_DB_USER:atry}
+    password: ${IT_DB_PASSWORD:atrypass}
   data:
     redis:
       host: ${IT_REDIS_HOST:127.0.0.1}

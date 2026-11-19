@@ -37,7 +37,7 @@
 
 ```bash
 cd server
-IT_DB_URL=...atry_it... mvn -B -Pintegration -pl btry-app \
+IT_DB_URL=...atry_it... mvn -B -Pintegration -pl atry-app \
   -Dtest='MeteringCoreIntegrationTest,LlmBillingIntegrationTest' test
 ```
 

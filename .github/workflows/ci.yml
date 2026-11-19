@@ -26,9 +26,9 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: itroot
-          MYSQL_DATABASE: btry_it
-          MYSQL_USER: btry
-          MYSQL_PASSWORD: btrypass
+          MYSQL_DATABASE: atry_it
+          MYSQL_USER: atry
+          MYSQL_PASSWORD: atrypass
         ports:
           - 3306:3306
         options: >-
@@ -46,9 +46,9 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     env:
-      IT_DB_URL: jdbc:mysql://127.0.0.1:3306/btry_it?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true
-      IT_DB_USER: btry
-      IT_DB_PASSWORD: btrypass
+      IT_DB_URL: jdbc:mysql://127.0.0.1:3306/atry_it?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true
+      IT_DB_USER: atry
+      IT_DB_PASSWORD: atrypass
       IT_REDIS_HOST: 127.0.0.1
       IT_REDIS_PORT: 6379
       IT_REDIS_DATABASE: 15

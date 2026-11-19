@@ -1,10 +1,11 @@
-# btry 文档索引
+# atry 文档索引
 
-btry 是**与业务无关的通用业务基座**：只保留内核（登录鉴权 / RBAC / 支付 / 对账 / 租户 / 审计 / 存储 / 可观测），
-不包含任何垂直业务代码与业务数据。本目录只维护内核与工程演进相关文档。
+atry 是**与业务无关的通用业务/AI 基座**：内核（登录鉴权 / RBAC / 支付 / 对账 / 租户 / 审计 / 存储 / 可观测）
++ AI 通用能力（LLM 调用治理 / 通用计量计费）。本目录维护内核与工程演进相关文档。
 
-> 历史说明：拆分前单体仓里的垂直业务文档已随业务迁出本仓，不在本仓维护；
-> 文中出现的"原业务/原单体"字样仅作为工程演进背景，不代表本仓包含业务逻辑。
+> 历史说明：本目录下多数文档是 **btry 时期的历史记录**（拆分/解耦/支付/对账等），保留原文用于复盘；
+> 当前 atry 的能力与验收请看 [`design/`](design/README.md) 与 [`evidence/`](evidence/)。
+> 模块与产物已统一为 `atry-*` 命名（D2），历史文档里出现的 `btry-*` 指旧仓名称。
 
 ## 架构与拆分
 
@@ -45,4 +46,4 @@ btry 是**与业务无关的通用业务基座**：只保留内核（登录鉴�
 ## 生成物
 
 - `docs/generated/table-access-*.{json,md}`：由 `tools/table_access_inventory.py` 生成，数据边界门禁的基线。
-- `docs/generated/modulith/`：由 `ModulithModulesTest` 调 Spring Modulith `Documenter` 生成（运行 `mvn -pl btry-app test -Dtest=ModulithModulesTest` 后从 `btry-app/target/spring-modulith-docs/` 同步）。
+- `docs/generated/modulith/`：由 `ModulithModulesTest` 调 Spring Modulith `Documenter` 生成（运行 `mvn -pl atry-app test -Dtest=ModulithModulesTest` 后从 `atry-app/target/spring-modulith-docs/` 同步）。

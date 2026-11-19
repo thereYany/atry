@@ -1,6 +1,6 @@
 # P6 验收记录：可演示收口（宿主接入 + 成本可观测）
 
-> 时间：2026-11-19。环境：本机 4C/8G、MySQL 8、Redis 6.0、JDK 21、Spring Boot 4.1.2，单实例 `btry-app`。
+> 时间：2026-11-19。环境：本机 4C/8G、MySQL 8、Redis 6.0、JDK 21、Spring Boot 4.1.2，单实例 `atry-app`。
 > 目标：把 atry-llm / atry-metering 接到演示宿主，一条命令看到「调用 → 用量 → 计价 → 预扣/结算 → 余额 → 用量事件」；
 > 同时补齐 P3 遗留的成本可观测（结构化日志 cost 分组 + `atry.llm.cost` 指标）。
 
@@ -8,7 +8,7 @@
 
 | 项 | 位置 | 说明 |
 |---|---|---|
-| 演示端点 | `server/btry-app/src/main/java/com/wherelee/base/app/demo/DemoLlmController.java` | `POST /api/demo/llm/chat`、`GET /api/demo/metering/balance`、`GET /api/demo/metering/usage`，全部走 JWT 保护 |
+| 演示端点 | `server/atry-app/src/main/java/com/wherelee/base/app/demo/DemoLlmController.java` | `POST /api/demo/llm/chat`、`GET /api/demo/metering/balance`、`GET /api/demo/metering/usage`，全部走 JWT 保护 |
 | 演示账户 | `server/.../demo/DemoBillingSupport.java` | 首访幂等开户并注入演示余额（bizNo `demo-seed:<tenant>:<user>`，重复调用不重复入账） |
 | 错误映射 | `server/.../demo/LlmExceptionHandler.java` | `LlmErrorCategory` → HTTP（402 配额 / 429 限流 / 504 超时 / 502 上游 / 503 过载），保留 category/retryable/billable |
 | 成本可观测 | `atry-llm/.../LlmEventLogger.java`、`LlmMetrics.java`、`LlmService.java` | `llm.call.finished` 的 cost 分组（amount / amount_micros）；`atry.llm.cost`（tenant×model）；结算/日志/指标使用同一价格路径 |
@@ -23,10 +23,10 @@ cd server && mvn -B -DskipTests install
 
 # 2) 启动演示宿主（空库首次启动会自动执行 8 个 Flyway 迁移）
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai' \
-DB_USER=btry DB_PASSWORD=btrypass \
+DB_USER=btry DB_PASSWORD=atrypass \
 REDIS_HOST=127.0.0.1 REDIS_PORT=6379 \
 SEED_ADMIN_PASSWORD=Demo1Pass \
-mvn -B -pl btry-app spring-boot:run
+mvn -B -pl atry-app spring-boot:run
 
 # 3) 另开终端：一条命令看完整链路
 docs/bench/p6-demo.sh
@@ -101,7 +101,7 @@ docs/bench/p6-demo.sh
 
 | 取舍 | 决策 | 理由 |
 |---|---|---|
-| 演示端点放哪 | `btry-app` 宿主层，只依赖 contracts | 内核保持业务无关；换宿主不影响模块 |
+| 演示端点放哪 | `atry-app` 宿主层，只依赖 contracts | 内核保持业务无关；换宿主不影响模块 |
 | 租户/用户来源 | 只取 JWT 登录态，请求体不允许指定 | 演示端点不能成为越权入口 |
 | 错误映射位置 | 宿主层 `@RestControllerAdvice`（最高优先级） | 内核只保证稳定分类，HTTP 语义属于接入方 |
 | 账户种子 | 幂等充值（`demo-seed:<tenant>:<user>`）+ 首访开户 | 重启/清库后自动恢复，不需要额外 bootstrap 顺序协调 |

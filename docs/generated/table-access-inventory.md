@@ -42,30 +42,30 @@
 
 ### `t_role` — 2 个模块访问
 
-- **bootstrap**：`KernelDataInitializer` (READ, server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java)
-- **identity**：`RbacRepository` (READ+WRITE, server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java)
+- **bootstrap**：`KernelDataInitializer` (READ, server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java)
+- **identity**：`RbacRepository` (READ+WRITE, server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java)
 
 ### `t_user` — 2 个模块访问
 
-- **bootstrap**：`KernelDataInitializer` (READ+WRITE, server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java)
-- **identity**：`AccountDirectoryService` (READ, server/btry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountDirectoryService.java)；`AccountQueryService` (READ, server/btry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountQueryService.java)；`UserInvitationMapper` (READ, server/btry-identity/src/main/resources/mapper/UserInvitationMapper.xml)；`UserRepository` (READ+WRITE, server/btry-identity/src/main/java/com/wherelee/base/modules/identity/user/UserRepository.java)
+- **bootstrap**：`KernelDataInitializer` (READ+WRITE, server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java)
+- **identity**：`AccountDirectoryService` (READ, server/atry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountDirectoryService.java)；`AccountQueryService` (READ, server/atry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountQueryService.java)；`UserInvitationMapper` (READ, server/atry-identity/src/main/resources/mapper/UserInvitationMapper.xml)；`UserRepository` (READ+WRITE, server/atry-identity/src/main/java/com/wherelee/base/modules/identity/user/UserRepository.java)
 
 ### `t_user_role` — 2 个模块访问
 
-- **bootstrap**：`KernelDataInitializer` (OTHER, server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java)
-- **identity**：`RbacRepository` (OTHER+READ+WRITE, server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java)
+- **bootstrap**：`KernelDataInitializer` (OTHER, server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java)
+- **identity**：`RbacRepository` (OTHER+READ+WRITE, server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java)
 
 
 ## 3. 多表 SQL（跨域查询候选）
 
 | 模块 | 类 | 涉及表 | 文件 |
 |---|---|---|---|
-| bootstrap | `KernelDataInitializer` | `t_role` / `t_user` / `t_user_role` | server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java |
-| identity | `RbacRepository` | `t_permission` / `t_role` / `t_role_permission` / `t_user_role` | server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java |
-| identity | `UserInvitationMapper` | `t_user` / `t_user_invitation` | server/btry-identity/src/main/resources/mapper/UserInvitationMapper.xml |
+| bootstrap | `KernelDataInitializer` | `t_role` / `t_user` / `t_user_role` | server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java |
+| identity | `RbacRepository` | `t_permission` / `t_role` / `t_role_permission` / `t_user_role` | server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java |
+| identity | `UserInvitationMapper` | `t_user` / `t_user_invitation` | server/atry-identity/src/main/resources/mapper/UserInvitationMapper.xml |
 | metering | `MeteringBillingStore` | `t_metering_account` / `t_metering_charge` / `t_metering_ledger` / `t_metering_usage_event` | server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringBillingStore.java |
 | metering | `MeteringStore` | `t_metering_price_book` / `t_metering_rate_card` | server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java |
-| payment | `PaymentRepository` | `t_payment_order` / `t_payment_outbox` | server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java |
+| payment | `PaymentRepository` | `t_payment_order` / `t_payment_outbox` | server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java |
 
 ## 4. 未被代码访问的表
 

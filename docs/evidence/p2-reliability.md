@@ -24,7 +24,7 @@
 ```bash
 cd server
 mvn -B -q test          # 单元 + 架构门禁
-IT_DB_URL=...atry_it... mvn -B -Pintegration -pl btry-app -Dtest='Llm*IntegrationTest' test
+IT_DB_URL=...atry_it... mvn -B -Pintegration -pl atry-app -Dtest='Llm*IntegrationTest' test
 ```
 
 结果：

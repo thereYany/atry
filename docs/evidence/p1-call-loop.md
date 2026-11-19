@@ -27,7 +27,7 @@ cd server && mvn -B -q test
 
 # P1 集成测试（atry_it，Flyway V400/V500 自动迁移）
 IT_DB_URL='jdbc:mysql://127.0.0.1:3306/atry_it?...' ... \
-  mvn -B -Pintegration -pl btry-app -Dtest=LlmCallFlowIntegrationTest test
+  mvn -B -Pintegration -pl atry-app -Dtest=LlmCallFlowIntegrationTest test
 ```
 
 结果：

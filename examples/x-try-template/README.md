@@ -1,13 +1,13 @@
-# btry-template
+# atry-template
 
-基于 btry 通用基座的最小新项目骨架（Xtry 模板）：登录/JWT、RBAC、租户隔离、支付（回调/查单/对账/退款）、对象存储、可观测性全部来自内核，只需写自己的垂直业务包。
+基于 atry 通用基座的最小新项目骨架（Xtry 模板）：登录/JWT、RBAC、租户隔离、支付（回调/查单/对账/退款）、对象存储、可观测性全部来自内核，只需写自己的垂直业务包。
 
 
-> 现状：模板依赖本机安装的 btry 内核模块（btry-platform / btry-contracts / btry-identity / btry-payment），`mvn install` 后即可构建。
+> 现状：模板依赖本机安装的 atry 内核模块（atry-platform / atry-contracts / atry-identity / atry-payment），`mvn install` 后即可构建。
 
 ## 快速开始
 
-1. 安装内核（在 btry 仓库根目录）：
+1. 安装内核（在 atry 仓库根目录）：
 
    ```bash
    cd server && mvn -B -DskipTests install
@@ -49,7 +49,7 @@
 
 | 能力 | 内核入口 |
 |---|---|
-| 登录 / JWT / 租户隔离 | btry-identity：`/api/auth/*`，`JwtAuthFilter`，`TenantContext` |
+| 登录 / JWT / 租户隔离 | atry-identity：`/api/auth/*`，`JwtAuthFilter`，`TenantContext` |
 | RBAC 权限码 | `@RequirePermission`，`/api/admin/roles` |
 | 对象存储 | `app.storage.*` 配置 + `CosObjectStorage`（内核只提供预签名能力，不内置上传 HTTP 接口；媒体类业务自行暴露上传接口） |
 | 支付（Mock/支付宝） | `contracts.payment.PaymentOperations` 发起支付、`/api/payments/mock/*`（Mock 渠道）、回调 `/api/payments/alipay/notify` |
@@ -61,7 +61,7 @@
 1. 新建包 `com.wherelee.template.<domain>`；
 2. Controller 用内核的 `@RequirePermission("<perm>")` 声明权限；
 3. 新权限码在 `PermissionCodes` 中登记并给角色授权（运营端 API 即可，无需改鉴权代码）；
-4. 数据访问走自己的表 + `JdbcTemplate`/MyBatis，跨模块调用只依赖 `btry-contracts`。
+4. 数据访问走自己的表 + `JdbcTemplate`/MyBatis，跨模块调用只依赖 `atry-contracts`。
 
 ## 注意
 

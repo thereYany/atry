@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** 示例垂直域：资料包。支付/回调/履约事件全部复用 btry 内核。 */
+/** 示例垂直域：资料包。支付/回调/履约事件全部复用 atry 内核。 */
 @RestController
 @RequestMapping("/api/resource-packs")
 public class ResourcePackController {

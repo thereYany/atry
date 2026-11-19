@@ -1,4 +1,4 @@
-name: btry
+name: atry
 
 x-logging: &default-logging
   driver: json-file
@@ -11,8 +11,8 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-btry_core}
-      MYSQL_USER: ${DB_USER:-btry}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-atry_core}
+      MYSQL_USER: ${DB_USER:-atry}
       MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.docker}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env.docker}
     command:
@@ -58,8 +58,8 @@ services:
     build: ./server
     restart: unless-stopped
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-btry_core}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      DB_USER: ${DB_USER:-btry}
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-atry_core}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER: ${DB_USER:-atry}
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -73,7 +73,7 @@ services:
       OTLP_TRACING_ENDPOINT: ${OTLP_TRACING_ENDPOINT:-http://jaeger:4318/v1/traces}
       TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-1.0}
       PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
-      PAYMENT_APP_ID: ${PAYMENT_APP_ID:-btry}
+      PAYMENT_APP_ID: ${PAYMENT_APP_ID:-atry}
       PAYMENT_MOCK_ENABLED: ${PAYMENT_MOCK_ENABLED:-true}
       # 无公网域名时保持 true，靠主动查单轮询结算
       PAYMENT_QUERY_ENABLED: ${PAYMENT_QUERY_ENABLED:-true}
@@ -91,7 +91,7 @@ services:
       ALIPAY_BILL_CHARSET: ${ALIPAY_BILL_CHARSET:-GBK}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
-      LOG_FILE: /app/logs/btry.log
+      LOG_FILE: /app/logs/atry.log
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=70 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs -Duser.timezone=Asia/Shanghai -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=20M}
     ports:
       - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-8084}:8084"

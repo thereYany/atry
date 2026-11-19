@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""扫描 btry 后端代码，生成「表 → 访问者 → 读写类型」清单。
+"""扫描 atry 后端代码，生成「表 → 访问者 → 读写类型」清单。
 
 用途：A 期数据地基的第一步——在改库之前，先量化每张表被哪些模块、哪些类、
 以什么方式（读/写/多表 join）访问。输出是 markdown，供 docs/generated/table-access-*.md 与 docs/README.md 引用。

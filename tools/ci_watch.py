@@ -2,8 +2,8 @@
 """盯 GitHub Actions：只读公开仓库的 runs/jobs，不需要任何密钥。
 
 用法：
-  python3 tools/ci_watch.py --repo thereYany/btry --sha $(git rev-parse HEAD)
-  python3 tools/ci_watch.py --repo thereYany/btry --branch main --watch --interval 20
+  python3 tools/ci_watch.py --repo thereYany/atry --sha $(git rev-parse HEAD)
+  python3 tools/ci_watch.py --repo thereYany/atry --branch main --watch --interval 20
 
 说明：
 - 未认证可读 runs 与 jobs（60 次/小时限流）；仓库私有或要拉失败日志时才需要 token
@@ -26,7 +26,7 @@ API = "https://api.github.com"
 def request(path: str, token: str | None) -> dict:
     req = urllib.request.Request(API + path)
     req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("User-Agent", "btry-ci-watch")
+    req.add_header("User-Agent", "atry-ci-watch")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=15) as response:

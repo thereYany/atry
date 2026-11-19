@@ -4,7 +4,7 @@
 
 ## 1. 注解目录（Declarative Surface）
 
-### 1.1 已有注解（btry-platform，复用）
+### 1.1 已有注解（atry-platform，复用）
 
 | 注解 | 切面 | 作用 | 顺序建议 |
 |---|---|---|---|
@@ -18,12 +18,12 @@
 
 | 注解 | 所属模块 | 目标 | 语义 | 关键属性 |
 |---|---|---|---|---|
-| `@LlmCall(name, meter?, budgetRef?, sample?)` | `btry-llm` | 方法（同步非流式） | 统一采集：路由结果、attempt、usage、TTFT、耗时、错误、成本；产出 `llm.call.*` 日志/指标/span | name、meterKey(可选)、budgetRef、logContent(默认 false) |
-| `@LlmStream(name, meter?, budgetRef?)` | `btry-llm` | 方法（SSE/流式入口） | 流式调用观测与取消语义；不包裹内容输出 | 同上 |
-| `@UsageMetered(meterKey, quantity, unit)` | `btry-metering` | 方法（任意 API 计量） | 成功后按 SpEL/参数提取数量并调用 `MeteringOperations.recordUsage` | meterKey、quantity 表达式、dimensions、when |
-| `@BudgetGuard(budgetRef, onExceed)` | `btry-llm` | 方法 | 调用前检查租户/项目预算，超限快速拒绝/降级（P7-② 落地：可用额检查 + DEGRADE 上下文） | budgetRef、minAvailable、action(REJECT/DEGRADE)、scope(TENANT/USER) |
-| `@Sensitive` | `btry-platform` | 字段/参数/返回值 | 标记日志脱敏（配合统一序列化器），避免 prompt/密钥落盘 | policy(MASK/HASH/DROP) |
-| `@BackgroundJob(name, idempotent?)` | `btry-platform` | 方法 | 定时/异步任务的统一日志、锁、耗时、失败告警 | name、lockKey |
+| `@LlmCall(name, meter?, budgetRef?, sample?)` | `atry-llm` | 方法（同步非流式） | 统一采集：路由结果、attempt、usage、TTFT、耗时、错误、成本；产出 `llm.call.*` 日志/指标/span | name、meterKey(可选)、budgetRef、logContent(默认 false) |
+| `@LlmStream(name, meter?, budgetRef?)` | `atry-llm` | 方法（SSE/流式入口） | 流式调用观测与取消语义；不包裹内容输出 | 同上 |
+| `@UsageMetered(meterKey, quantity, unit)` | `atry-metering` | 方法（任意 API 计量） | 成功后按 SpEL/参数提取数量并调用 `MeteringOperations.recordUsage` | meterKey、quantity 表达式、dimensions、when |
+| `@BudgetGuard(budgetRef, onExceed)` | `atry-llm` | 方法 | 调用前检查租户/项目预算，超限快速拒绝/降级（P7-② 落地：可用额检查 + DEGRADE 上下文） | budgetRef、minAvailable、action(REJECT/DEGRADE)、scope(TENANT/USER) |
+| `@Sensitive` | `atry-platform` | 字段/参数/返回值 | 标记日志脱敏（配合统一序列化器），避免 prompt/密钥落盘 | policy(MASK/HASH/DROP) |
+| `@BackgroundJob(name, idempotent?)` | `atry-platform` | 方法 | 定时/异步任务的统一日志、锁、耗时、失败告警 | name、lockKey |
 
 > 设计约束：
 > - 注解只做"声明"，不承载业务逻辑；切面失败不得改变业务语义（限流/鉴权/幂等除外，它们是保护语义）。

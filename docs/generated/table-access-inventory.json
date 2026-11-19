@@ -1,4 +1,132 @@
 {
+  "t_user": {
+    "KernelDataInitializer": {
+      "module": "bootstrap",
+      "ops": [
+        "READ",
+        "WRITE"
+      ],
+      "file": "server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java",
+      "multi_tables": [
+        "t_role",
+        "t_user_role"
+      ]
+    },
+    "UserRepository": {
+      "module": "identity",
+      "ops": [
+        "READ",
+        "WRITE"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/user/UserRepository.java",
+      "multi_tables": []
+    },
+    "AccountDirectoryService": {
+      "module": "identity",
+      "ops": [
+        "READ"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountDirectoryService.java",
+      "multi_tables": []
+    },
+    "AccountQueryService": {
+      "module": "identity",
+      "ops": [
+        "READ"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountQueryService.java",
+      "multi_tables": []
+    },
+    "UserInvitationMapper": {
+      "module": "identity",
+      "ops": [
+        "READ"
+      ],
+      "file": "server/atry-identity/src/main/resources/mapper/UserInvitationMapper.xml",
+      "multi_tables": [
+        "t_user_invitation"
+      ]
+    }
+  },
+  "t_user_role": {
+    "KernelDataInitializer": {
+      "module": "bootstrap",
+      "ops": [
+        "OTHER"
+      ],
+      "file": "server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java",
+      "multi_tables": [
+        "t_role",
+        "t_user"
+      ]
+    },
+    "RbacRepository": {
+      "module": "identity",
+      "ops": [
+        "OTHER",
+        "READ",
+        "WRITE"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
+      "multi_tables": [
+        "t_permission",
+        "t_role",
+        "t_role_permission"
+      ]
+    }
+  },
+  "t_role": {
+    "KernelDataInitializer": {
+      "module": "bootstrap",
+      "ops": [
+        "READ"
+      ],
+      "file": "server/atry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java",
+      "multi_tables": [
+        "t_user",
+        "t_user_role"
+      ]
+    },
+    "RbacRepository": {
+      "module": "identity",
+      "ops": [
+        "READ",
+        "WRITE"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
+      "multi_tables": [
+        "t_user_role"
+      ]
+    }
+  },
+  "t_permission": {
+    "RbacRepository": {
+      "module": "identity",
+      "ops": [
+        "READ"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
+      "multi_tables": [
+        "t_role_permission",
+        "t_user_role"
+      ]
+    }
+  },
+  "t_role_permission": {
+    "RbacRepository": {
+      "module": "identity",
+      "ops": [
+        "OTHER",
+        "READ",
+        "WRITE"
+      ],
+      "file": "server/atry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
+      "multi_tables": [
+        "t_permission",
+        "t_user_role"
+      ]
+    }
+  },
   "t_llm_call_record": {
     "LlmCallRepository": {
       "module": "llm",
@@ -43,26 +171,6 @@
       "multi_tables": []
     }
   },
-  "t_metering_charge": {
-    "MeteringBillingStore": {
-      "module": "metering",
-      "ops": [
-        "READ"
-      ],
-      "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringBillingStore.java",
-      "multi_tables": [
-        "t_metering_usage_event"
-      ]
-    },
-    "MeteringStore": {
-      "module": "metering",
-      "ops": [
-        "WRITE"
-      ],
-      "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java",
-      "multi_tables": []
-    }
-  },
   "t_metering_usage_event": {
     "MeteringBillingStore": {
       "module": "metering",
@@ -78,6 +186,26 @@
       "module": "metering",
       "ops": [
         "READ",
+        "WRITE"
+      ],
+      "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java",
+      "multi_tables": []
+    }
+  },
+  "t_metering_charge": {
+    "MeteringBillingStore": {
+      "module": "metering",
+      "ops": [
+        "READ"
+      ],
+      "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringBillingStore.java",
+      "multi_tables": [
+        "t_metering_usage_event"
+      ]
+    },
+    "MeteringStore": {
+      "module": "metering",
+      "ops": [
         "WRITE"
       ],
       "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java",
@@ -166,18 +294,6 @@
       "multi_tables": []
     }
   },
-  "t_metering_rate_card": {
-    "MeteringStore": {
-      "module": "metering",
-      "ops": [
-        "READ"
-      ],
-      "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java",
-      "multi_tables": [
-        "t_metering_price_book"
-      ]
-    }
-  },
   "t_metering_price_book": {
     "MeteringStore": {
       "module": "metering",
@@ -190,131 +306,15 @@
       ]
     }
   },
-  "t_user": {
-    "KernelDataInitializer": {
-      "module": "bootstrap",
-      "ops": [
-        "READ",
-        "WRITE"
-      ],
-      "file": "server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java",
-      "multi_tables": [
-        "t_role",
-        "t_user_role"
-      ]
-    },
-    "UserRepository": {
-      "module": "identity",
-      "ops": [
-        "READ",
-        "WRITE"
-      ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/user/UserRepository.java",
-      "multi_tables": []
-    },
-    "AccountDirectoryService": {
-      "module": "identity",
+  "t_metering_rate_card": {
+    "MeteringStore": {
+      "module": "metering",
       "ops": [
         "READ"
       ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountDirectoryService.java",
-      "multi_tables": []
-    },
-    "AccountQueryService": {
-      "module": "identity",
-      "ops": [
-        "READ"
-      ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/user/AccountQueryService.java",
-      "multi_tables": []
-    },
-    "UserInvitationMapper": {
-      "module": "identity",
-      "ops": [
-        "READ"
-      ],
-      "file": "server/btry-identity/src/main/resources/mapper/UserInvitationMapper.xml",
+      "file": "server/atry-metering/src/main/java/com/wherelee/base/modules/metering/store/MeteringStore.java",
       "multi_tables": [
-        "t_user_invitation"
-      ]
-    }
-  },
-  "t_user_role": {
-    "KernelDataInitializer": {
-      "module": "bootstrap",
-      "ops": [
-        "OTHER"
-      ],
-      "file": "server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java",
-      "multi_tables": [
-        "t_role",
-        "t_user"
-      ]
-    },
-    "RbacRepository": {
-      "module": "identity",
-      "ops": [
-        "OTHER",
-        "READ",
-        "WRITE"
-      ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
-      "multi_tables": [
-        "t_permission",
-        "t_role",
-        "t_role_permission"
-      ]
-    }
-  },
-  "t_role": {
-    "KernelDataInitializer": {
-      "module": "bootstrap",
-      "ops": [
-        "READ"
-      ],
-      "file": "server/btry-app/src/main/java/com/wherelee/base/bootstrap/KernelDataInitializer.java",
-      "multi_tables": [
-        "t_user",
-        "t_user_role"
-      ]
-    },
-    "RbacRepository": {
-      "module": "identity",
-      "ops": [
-        "READ",
-        "WRITE"
-      ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
-      "multi_tables": [
-        "t_user_role"
-      ]
-    }
-  },
-  "t_permission": {
-    "RbacRepository": {
-      "module": "identity",
-      "ops": [
-        "READ"
-      ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
-      "multi_tables": [
-        "t_role_permission",
-        "t_user_role"
-      ]
-    }
-  },
-  "t_role_permission": {
-    "RbacRepository": {
-      "module": "identity",
-      "ops": [
-        "OTHER",
-        "READ",
-        "WRITE"
-      ],
-      "file": "server/btry-identity/src/main/java/com/wherelee/base/modules/identity/rbac/RbacRepository.java",
-      "multi_tables": [
-        "t_permission",
-        "t_user_role"
+        "t_metering_price_book"
       ]
     }
   },
@@ -325,7 +325,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentOrderRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentOrderRepository.java",
       "multi_tables": []
     },
     "PaymentRepository": {
@@ -333,7 +333,7 @@
       "ops": [
         "READ"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
       "multi_tables": [
         "t_payment_outbox"
       ]
@@ -343,7 +343,7 @@
       "ops": [
         "READ"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
       "multi_tables": []
     }
   },
@@ -354,7 +354,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
       "multi_tables": []
     },
     "MockChannelBillProvider": {
@@ -362,7 +362,7 @@
       "ops": [
         "READ"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/recon/MockChannelBillProvider.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/recon/MockChannelBillProvider.java",
       "multi_tables": []
     }
   },
@@ -374,7 +374,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
       "multi_tables": []
     }
   },
@@ -385,7 +385,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
       "multi_tables": []
     }
   },
@@ -395,7 +395,7 @@
       "ops": [
         "READ"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/PaymentRepository.java",
       "multi_tables": [
         "t_payment_order"
       ]
@@ -406,7 +406,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/outbox/PaymentOutboxRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/outbox/PaymentOutboxRepository.java",
       "multi_tables": []
     }
   },
@@ -416,7 +416,7 @@
       "ops": [
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
       "multi_tables": []
     }
   },
@@ -426,7 +426,7 @@
       "ops": [
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
       "multi_tables": []
     }
   },
@@ -437,7 +437,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
+      "file": "server/atry-payment/src/main/java/com/wherelee/base/modules/payment/recon/ReconRepository.java",
       "multi_tables": []
     }
   },
@@ -447,7 +447,7 @@
       "ops": [
         "WRITE"
       ],
-      "file": "server/btry-platform/src/main/java/com/wherelee/base/modules/platform/alert/AlertLogRepository.java",
+      "file": "server/atry-platform/src/main/java/com/wherelee/base/modules/platform/alert/AlertLogRepository.java",
       "multi_tables": []
     }
   },
@@ -457,7 +457,7 @@
       "ops": [
         "WRITE"
       ],
-      "file": "server/btry-platform/src/main/java/com/wherelee/base/modules/platform/audit/AdminAuditRepository.java",
+      "file": "server/atry-platform/src/main/java/com/wherelee/base/modules/platform/audit/AdminAuditRepository.java",
       "multi_tables": []
     }
   },
@@ -468,7 +468,7 @@
         "READ",
         "WRITE"
       ],
-      "file": "server/btry-identity/src/main/resources/mapper/UserInvitationMapper.xml",
+      "file": "server/atry-identity/src/main/resources/mapper/UserInvitationMapper.xml",
       "multi_tables": [
         "t_user"
       ]

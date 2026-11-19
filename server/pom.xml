@@ -12,20 +12,20 @@
     </parent>
 
     <groupId>com.wherelee</groupId>
-    <artifactId>btry-parent</artifactId>
+    <artifactId>atry-parent</artifactId>
     <version>0.1.0</version>
     <packaging>pom</packaging>
-    <name>btry-base</name>
+    <name>atry-base</name>
     <description>通用业务基座（多模块父工程）：platform / contracts / identity / payment</description>
 
     <modules>
-        <module>btry-platform</module>
-        <module>btry-contracts</module>
-        <module>btry-identity</module>
-        <module>btry-payment</module>
+        <module>atry-platform</module>
+        <module>atry-contracts</module>
+        <module>atry-identity</module>
+        <module>atry-payment</module>
         <module>atry-llm</module>
         <module>atry-metering</module>
-        <module>btry-app</module>
+        <module>atry-app</module>
     </modules>
 
     <properties>

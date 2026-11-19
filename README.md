@@ -9,11 +9,11 @@ atry 是一个**与业务无关的 Java 业务基座**（Java 21 / Spring Boot 4
 
 | 模块 | 说明 |
 |---|---|
-| `btry-platform` | 共享内核 starter：租户 SQL 拦截、事务/幂等/限流/审计 AOP、告警、对象存储 + 签名 URL 缓存、Tracing、Resilience4j 降级、统一异常/分页、健康检查 |
-| `btry-contracts` | 跨模块稳定契约：`contracts.identity.*`（账号/角色/邀请只读与写操作）、`contracts.payment.*`（发起支付/查询/对账/告警查询；退款编排由业务侧驱动） |
-| `btry-identity` | 账号、登录/JWT、修改密码、登录限流、RBAC（角色/权限码）、通用用户邀请（roleCode） |
-| `btry-payment` | 支付单/支付尝试/回调事件/事务性发件箱（崩溃回收）/退款单与重试状态/渠道关单/主动查单轮询/T+1 账单对账；Mock 与支付宝（公钥模式 v2 SDK）渠道适配；`PaymentSettledEvent` 对外事件。退款编排由业务侧驱动 |
-| `btry-app` | 内核演示宿主：启动类、内核种子（admin）、运营端账号/角色/对账接口、支付告警巡检 |
+| `atry-platform` | 共享内核 starter：租户 SQL 拦截、事务/幂等/限流/审计 AOP、告警、对象存储 + 签名 URL 缓存、Tracing、Resilience4j 降级、统一异常/分页、健康检查 |
+| `atry-contracts` | 跨模块稳定契约：`contracts.identity.*`（账号/角色/邀请只读与写操作）、`contracts.payment.*`（发起支付/查询/对账/告警查询；退款编排由业务侧驱动） |
+| `atry-identity` | 账号、登录/JWT、修改密码、登录限流、RBAC（角色/权限码）、通用用户邀请（roleCode） |
+| `atry-payment` | 支付单/支付尝试/回调事件/事务性发件箱（崩溃回收）/退款单与重试状态/渠道关单/主动查单轮询/T+1 账单对账；Mock 与支付宝（公钥模式 v2 SDK）渠道适配；`PaymentSettledEvent` 对外事件。退款编排由业务侧驱动 |
+| `atry-app` | 内核演示宿主：启动类、内核种子（admin）、运营端账号/角色/对账接口、支付告警巡检 |
 | `atry-llm` | **新增（P5 完成）**：provider 抽象 + mock/DeepSeek 真实适配、调用记录/outbox、超时/重试/熔断/限流/舱壁、流式、日志/指标/OTel/注解 |
 | `atry-metering` | **新增（P4 完成）**：用量事件/计价、账户/预扣/结算/账本、并发防超卖、充值/出账/对账/过期回收 |
 
@@ -32,9 +32,9 @@ atry 是一个**与业务无关的 Java 业务基座**（Java 21 / Spring Boot 4
 cd server
 mvn -B -DskipTests install          # 安装内核模块到本地 Maven 仓库（垂直应用依赖它）
 
-DB_URL='jdbc:mysql://127.0.0.1:3306/btry_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true' \
+DB_URL='jdbc:mysql://127.0.0.1:3306/atry_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true' \
 DB_USER=root DB_PASSWORD=root \
-mvn -B -pl btry-app spring-boot:run
+mvn -B -pl atry-app spring-boot:run
 ```
 
 启动后后端在 `http://127.0.0.1:8084`，健康检查 `/actuator/health`，Prometheus 指标在管理端口 `9091/actuator/prometheus`。
@@ -79,14 +79,14 @@ docs/bench/p6-demo.sh
 mvn -B test
 
 # 集成测试：真实 MySQL + Redis
-IT_DB_URL='jdbc:mysql://127.0.0.1:3306/btry_it?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true' \
-IT_DB_USER=btry IT_DB_PASSWORD=btrypass \
+IT_DB_URL='jdbc:mysql://127.0.0.1:3306/atry_it?allowPublicKeyRetrieval=true&useSSL=false&allowMultiQueries=true' \
+IT_DB_USER=atry IT_DB_PASSWORD=atrypass \
 IT_REDIS_HOST=127.0.0.1 IT_REDIS_PORT=6379 IT_REDIS_DATABASE=15 \
 COS_SECRET_ID=dummy COS_SECRET_KEY=dummy \
 mvn -B -Pintegration test
 ```
 
-另有架构门禁（ArchUnit）：内核不得依赖任何垂直业务、`platform` 不得反向依赖、Modulith 模块校验等，见 `btry-app/src/test/java/com/wherelee/base/architecture/`。
+另有架构门禁（ArchUnit）：内核不得依赖任何垂直业务、`platform` 不得反向依赖、Modulith 模块校验等，见 `atry-app/src/test/java/com/wherelee/base/architecture/`。
 
 ## 支付渠道
 
@@ -135,7 +135,7 @@ examples/ 新垂直项目脚手架（x-try-template）
 
 ## CI
 
-[![ci](https://github.com/thereYany/btry/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thereYany/btry/actions/workflows/ci.yml)（数据边界门禁 + 单元测试 + 集成测试）
+[![ci](https://github.com/thereYany/atry/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thereYany/atry/actions/workflows/ci.yml)（数据边界门禁 + 单元测试 + 集成测试）
 
 ## License
 
