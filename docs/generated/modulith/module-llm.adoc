@@ -1,9 +1,0 @@
-[%autowidth.stretch, cols="h,a"]
-|===
-|Base package
-|`com.wherelee.base.modules.llm`
-|Spring components
-|_Services_
-
-* `c.w.b.m.l.LlmService`
-|===
