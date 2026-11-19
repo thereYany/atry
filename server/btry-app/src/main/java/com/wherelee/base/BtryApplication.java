@@ -2,6 +2,7 @@ package com.wherelee.base;
 
 import com.wherelee.base.app.alert.AlertProperties;
 import com.wherelee.base.bootstrap.KernelSeedProperties;
+import com.wherelee.base.modules.llm.config.LlmProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -21,7 +22,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.wherelee.base.modules.llm",
         "com.wherelee.base.modules.metering"
 })
-@EnableConfigurationProperties({KernelSeedProperties.class, AlertProperties.class})
+@EnableConfigurationProperties({KernelSeedProperties.class, AlertProperties.class, LlmProperties.class})
 @EnableScheduling
 public class BtryApplication {
 

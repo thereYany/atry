@@ -34,7 +34,8 @@ public abstract class KernelIntegrationTestSupport {
         for (String table : new String[]{
                 "t_user", "t_user_role", "t_user_invitation",
                 "t_payment_order", "t_payment_attempt", "t_payment_event", "t_refund",
-                "t_payment_outbox", "t_recon_task", "t_recon_diff", "t_channel_bill"
+                "t_payment_outbox", "t_recon_task", "t_recon_diff", "t_channel_bill",
+                "t_llm_call_record", "t_llm_outbox"
         }) {
             jdbc.execute("TRUNCATE TABLE " + table);
         }

@@ -176,3 +176,10 @@ logging:
     level: "%5p [traceId=%X{traceId:-}]"
   level:
     com.wherelee.base: info
+
+atry:
+  llm:
+    mock:
+      delay-ms: ${ATRY_LLM_MOCK_DELAY_MS:0}
+      failure-model: ${ATRY_LLM_MOCK_FAILURE_MODEL:mock-fail}
+      default-max-tokens: ${ATRY_LLM_MOCK_DEFAULT_MAX_TOKENS:128}
