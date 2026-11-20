@@ -13,7 +13,7 @@
 
     <groupId>com.wherelee</groupId>
     <artifactId>atry-parent</artifactId>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
     <packaging>pom</packaging>
     <name>atry-base</name>
     <description>通用业务基座（多模块父工程）：platform / contracts / identity / payment</description>

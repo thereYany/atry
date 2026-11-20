@@ -69,3 +69,24 @@ jobs:
         run: mvn -B -Pintegration test
       - name: JaCoCo coverage report
         run: mvn -B -q jacoco:report
+
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t atry:${{ github.sha }} -f server/Dockerfile server
+      - name: Trivy image scan (CRITICAL, fixed only)
+        uses: aquasecurity/trivy-action@0.28.0
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db
+        with:
+          image-ref: atry:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL'
+          vuln-type: 'os,library'

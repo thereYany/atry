@@ -29,7 +29,7 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **483 用例**：单元 + 架构门禁 410（`mvn test`），集成 69（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
+| 测试 | **484 用例**：单元 + 架构门禁 410（`mvn test`），集成 70（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
@@ -108,6 +108,17 @@ P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
 - JSON 日志脱敏回归：`LogbackMaskingConfigTest` 直接解析 logback 配置里的正则，防止配置笔误泄露凭据。
 
 
+## 运维收口（0.7.0）
+
+- **审计统一检索**：`GET /api/admin/audit-logs`（管理操作）与 `GET /api/admin/auth-events`（认证事件），
+  需要 `admin:audit:view` 权限；按租户隔离，动作/操作人/事件/用户名/结果/日期可组合，分页返回。
+  管理操作写入现在显式带 `tenant_id`（修复多租户串号隐患）。
+- **可观测看板**：Grafana `atry overview` 增加限流命中、分布式锁、LLM token、`atry.method` p95 面板；
+  Prometheus 增加 6 条告警规则（backend down / 5xx / p95 / 堆压 / 锁失败 / 限流飙升），见 `observability/README.md`。
+- **CI 镜像与依赖**：`image` job 用 `server/Dockerfile` 构建镜像并用 Trivy 扫 CRITICAL（只报可修复）；
+  Dependabot 周更 Maven / GitHub Actions / Docker。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -118,7 +129,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.6.0-exec.jar
+java -jar atry-app/target/atry-app-0.7.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。
