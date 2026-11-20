@@ -21,6 +21,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final Set<String> PUBLIC_API = Set.of(
             "/api/health",
             "/api/auth/login",
+            "/api/auth/register",
             "/api/auth/invitations/preview",
             "/api/auth/invitations/accept",
             "/api/payments/alipay/notify"
@@ -76,6 +77,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             TenantContext.set(payload.tenantId());
             request.setAttribute("userId", user.id());
             request.setAttribute("role", user.role());
+            request.setAttribute("username", user.username());
             request.setAttribute("tenantId", payload.tenantId());
             // 写进 MDC：后续所有日志行都自动带 userId/tenantId，排障不用来回拼请求
             MDC.put("userId", String.valueOf(user.id()));

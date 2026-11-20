@@ -23,6 +23,9 @@ spring:
       timeout: 2s
   flyway:
     enabled: true
+    # 内核迁移可能晚于某条线新增（如 V101 晚于 V4xx/V5xx）；允许补跑，但版本号只增不复用。
+    # 垂直应用（V9xx）升级内核时同样需要；CI 的迁移纪律检查在 P4 补。
+    out-of-order: true
     # 内核表由各内核模块 jar 自带迁移；垂直应用在此基础上追加自己的 location
     locations: classpath:db/migration/platform,classpath:db/migration/identity,classpath:db/migration/payment,classpath:db/migration/llm,classpath:db/migration/metering
   task:
@@ -184,6 +187,8 @@ logging:
     com.wherelee.base: ${LOG_LEVEL_BASE:info}
 
 springdoc:
+  # 启动期预加载文档，避免首个请求承担扫描开销
+  pre-loading-enabled: true
   api-docs:
     path: /v3/api-docs
     # 生产默认关闭文档端点；需要时显式 SPRINGDOC_ENABLED=true

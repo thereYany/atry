@@ -46,6 +46,7 @@ TABLE_DB = {
     "t_permission": "identity",
     "t_role_permission": "identity",
     "t_user_role": "identity",
+    "t_auth_event": "identity",
     # payment 内核
     "t_payment_order": "payment",
     "t_payment_attempt": "payment",
@@ -262,6 +263,7 @@ def propose_owner(table: str, modules: dict[str, Access]) -> str:
         "t_permission": "identity",
         "t_role_permission": "identity",
         "t_user_role": "identity",
+    "t_auth_event": "identity",
         "t_payment_order": "payment",
         "t_payment_attempt": "payment",
         "t_payment_event": "payment",

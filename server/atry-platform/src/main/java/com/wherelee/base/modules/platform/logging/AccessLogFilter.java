@@ -1,5 +1,6 @@
 package com.wherelee.base.modules.platform.logging;
 
+import com.wherelee.base.modules.platform.common.web.ClientIps;
 import com.wherelee.base.modules.platform.config.SecurityProperties;
 import jakarta.servlet.AsyncEvent;
 import jakarta.servlet.AsyncListener;
@@ -155,18 +156,7 @@ public class AccessLogFilter extends OncePerRequestFilter {
     }
 
     private String clientIp(HttpServletRequest request) {
-        if (securityProperties != null && securityProperties.trustForwardedHeaders()) {
-            String forwarded = request.getHeader("X-Forwarded-For");
-            if (forwarded != null && !forwarded.isBlank()) {
-                int comma = forwarded.indexOf(',');
-                return (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
-            }
-            String realIp = request.getHeader("X-Real-IP");
-            if (realIp != null && !realIp.isBlank()) {
-                return realIp.trim();
-            }
-        }
-        return request.getRemoteAddr();
+        return ClientIps.resolve(request, securityProperties != null && securityProperties.trustForwardedHeaders());
     }
 
     private String abbreviate(String value, int max) {

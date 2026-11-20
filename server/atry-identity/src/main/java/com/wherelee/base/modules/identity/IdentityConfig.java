@@ -1,6 +1,7 @@
 package com.wherelee.base.modules.identity;
 
 import com.wherelee.base.modules.identity.invitation.InvitationProperties;
+import com.wherelee.base.modules.identity.auth.AuthProperties;
 import com.wherelee.base.modules.identity.security.JwtProperties;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,6 +15,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration(proxyBeanMethods = false)
 @MapperScan("com.wherelee.base.modules.identity.invitation")
-@EnableConfigurationProperties({JwtProperties.class, InvitationProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, InvitationProperties.class, AuthProperties.class})
 public class IdentityConfig {
 }

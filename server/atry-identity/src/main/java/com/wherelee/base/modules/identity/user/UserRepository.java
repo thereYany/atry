@@ -56,6 +56,13 @@ public class UserRepository {
         return users.stream().findFirst();
     }
 
+    public boolean existsByEmail(String email) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM t_user WHERE tenant_id = ? AND email = ?
+                """, Integer.class, TenantContext.current(), email);
+        return count != null && count > 0;
+    }
+
     public void updatePassword(Long id, String passwordHash) {
         jdbc.update("""
                 UPDATE t_user
@@ -95,20 +102,27 @@ public class UserRepository {
     }
     public Long create(String username, String passwordHash, String nickname,
                        String role, boolean mustChangePassword) {
+        return create(username, passwordHash, nickname, role, mustChangePassword, null);
+    }
+
+    /** 创建账号（可带邮箱）；邮箱只存不验证，唯一性由租户内唯一键保证。 */
+    public Long create(String username, String passwordHash, String nickname,
+                       String role, boolean mustChangePassword, String email) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO t_user
-                        (tenant_id, username, password_hash, nickname, role, status,
+                        (tenant_id, username, password_hash, nickname, email, role, status,
                          must_change_password, token_version)
-                    VALUES (?, ?, ?, ?, ?, 'ACTIVE', ?, 0)
+                    VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, 0)
                     """, Statement.RETURN_GENERATED_KEYS);
             statement.setLong(1, TenantContext.current());
             statement.setString(2, username);
             statement.setString(3, passwordHash);
             statement.setString(4, nickname);
-            statement.setString(5, role);
-            statement.setBoolean(6, mustChangePassword);
+            statement.setString(5, email);
+            statement.setString(6, role);
+            statement.setBoolean(7, mustChangePassword);
             return statement;
         }, keyHolder);
         Number key = keyHolder.getKey();

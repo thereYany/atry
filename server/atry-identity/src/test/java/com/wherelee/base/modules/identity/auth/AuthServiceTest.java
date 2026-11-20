@@ -43,7 +43,7 @@ class AuthServiceTest {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
-        service = new AuthService(userRepository, passwordEncoder, jwtService);
+        service = new AuthService(userRepository, passwordEncoder, jwtService, new AuthProperties(true, "USER"));
     }
 
     @Test

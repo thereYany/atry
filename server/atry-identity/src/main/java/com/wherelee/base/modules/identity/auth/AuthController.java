@@ -3,12 +3,16 @@ package com.wherelee.base.modules.identity.auth;
 import com.wherelee.base.modules.identity.auth.dto.ChangePasswordRequest;
 import com.wherelee.base.modules.identity.auth.dto.LoginRequest;
 import com.wherelee.base.modules.identity.auth.dto.LoginResponse;
+import com.wherelee.base.modules.identity.auth.dto.RegisterRequest;
 import com.wherelee.base.modules.identity.auth.dto.UserInfo;
 import com.wherelee.base.modules.identity.security.ClientIpResolver;
 import com.wherelee.base.modules.identity.security.LoginThrottleService;
 import com.wherelee.base.modules.platform.aop.Measured;
+import com.wherelee.base.modules.platform.aop.RateLimit;
+import com.wherelee.base.modules.platform.common.BizException;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,13 +27,16 @@ public class AuthController {
 
     private final AuthService authService;
     private final LoginThrottleService loginThrottleService;
+    private final AuthAuditService authAuditService;
     private final ClientIpResolver clientIpResolver;
 
     public AuthController(AuthService authService,
                           LoginThrottleService loginThrottleService,
+                          AuthAuditService authAuditService,
                           ClientIpResolver clientIpResolver) {
         this.authService = authService;
         this.loginThrottleService = loginThrottleService;
+        this.authAuditService = authAuditService;
         this.clientIpResolver = clientIpResolver;
     }
 
@@ -37,15 +44,32 @@ public class AuthController {
     @Measured("auth.login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         String clientIp = clientIpResolver.resolve(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
         loginThrottleService.check(request.username(), clientIp);
         LoginResponse response;
         try {
             response = authService.login(request);
         } catch (RuntimeException e) {
             loginThrottleService.recordFailure(request.username(), clientIp);
+            authAuditService.loginFailure(request.username(), clientIp, userAgent, failureReason(e));
             throw e;
         }
         loginThrottleService.clear(request.username(), clientIp);
+        authAuditService.loginSuccess(response.user().id(), response.user().username(), clientIp, userAgent);
+        return response;
+    }
+
+    /**
+     * 自助注册：用户名 + 密码 + 昵称 + 邮箱（可选）。
+     *
+     * <p>无验证码/无邮件通道，靠 IP 维度限流（每 IP 每小时 10 次）+ 唯一键 + 注册开关防刷。</p>
+     */
+    @PostMapping("/register")
+    @RateLimit(key = "auth:register", limit = 10, windowSeconds = 3600, dimension = RateLimit.Dimension.IP)
+    public LoginResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        LoginResponse response = authService.register(request);
+        authAuditService.register(response.user().id(), response.user().username(),
+                clientIpResolver.resolve(httpRequest), httpRequest.getHeader("User-Agent"));
         return response;
     }
 
@@ -54,9 +78,29 @@ public class AuthController {
         return authService.me(userId);
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestAttribute("userId") Long userId,
+                                       @RequestAttribute("username") String username,
+                                       HttpServletRequest httpRequest) {
+        authAuditService.logout(userId, username, clientIpResolver.resolve(httpRequest),
+                httpRequest.getHeader("User-Agent"));
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/password")
     public void changePassword(@RequestAttribute("userId") Long userId,
                                @Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(userId, request);
+    }
+
+    private String failureReason(RuntimeException e) {
+        if (e instanceof BizException biz) {
+            return switch (biz.status().value()) {
+                case 429 -> "THROTTLED";
+                case 401 -> "BAD_CREDENTIALS";
+                default -> "BIZ_" + biz.status().value();
+            };
+        }
+        return "ERROR";
     }
 }

@@ -1,6 +1,8 @@
 package com.wherelee.base.modules.platform.aop;
 
 import com.wherelee.base.modules.platform.common.BizException;
+import com.wherelee.base.modules.platform.common.web.ClientIps;
+import com.wherelee.base.modules.platform.config.SecurityProperties;
 import com.wherelee.base.modules.platform.resilience.LocalRateLimiter;
 import com.wherelee.base.modules.platform.resilience.RedisFallbackMetrics;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +10,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -29,18 +32,29 @@ public class RateLimitAspect {
     private final StringRedisTemplate redis;
     private final LocalRateLimiter localRateLimiter;
     private final RedisFallbackMetrics fallbackMetrics;
+    private final SecurityProperties securityProperties;
 
+    /** 兼容旧测试/手工构造：不信任转发头。 */
     public RateLimitAspect(StringRedisTemplate redis,
                            LocalRateLimiter localRateLimiter,
                            RedisFallbackMetrics fallbackMetrics) {
+        this(redis, localRateLimiter, fallbackMetrics, null);
+    }
+
+    @Autowired
+    public RateLimitAspect(StringRedisTemplate redis,
+                           LocalRateLimiter localRateLimiter,
+                           RedisFallbackMetrics fallbackMetrics,
+                           SecurityProperties securityProperties) {
         this.redis = redis;
         this.localRateLimiter = localRateLimiter;
         this.fallbackMetrics = fallbackMetrics;
+        this.securityProperties = securityProperties;
     }
 
     @Around("@annotation(rateLimit)")
     public Object around(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
-        String userKey = currentUserKey();
+        String userKey = dimensionKey(rateLimit.dimension());
         String annotationKey = rateLimit.key().isBlank()
                 ? joinPoint.getSignature().toShortString()
                 : rateLimit.key();
@@ -72,12 +86,20 @@ public class RateLimitAspect {
         return joinPoint.proceed();
     }
 
-    private String currentUserKey() {
+    private String dimensionKey(RateLimit.Dimension dimension) {
+        if (dimension == RateLimit.Dimension.ANONYMOUS) {
+            return "anonymous";
+        }
         try {
             ServletRequestAttributes attributes =
                     (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes == null) {
                 return "anonymous";
+            }
+            if (dimension == RateLimit.Dimension.IP) {
+                boolean trustForwarded = securityProperties != null
+                        && securityProperties.trustForwardedHeaders();
+                return "ip:" + ClientIps.resolve(attributes.getRequest(), trustForwarded);
             }
             Object userId = attributes.getRequest().getAttribute("userId");
             return userId == null ? "anonymous" : String.valueOf(userId);

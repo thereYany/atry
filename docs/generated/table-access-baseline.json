@@ -1,6 +1,6 @@
 {
   "summary": {
-    "table_count": 30,
+    "table_count": 31,
     "cross_module_tables": [],
     "multi_table_class_count": 6,
     "multi_table_classes": [
@@ -36,6 +36,18 @@
       ],
       "effective_modules": [
         "platform"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 1,
+      "multi_table_classes": []
+    },
+    "t_auth_event": {
+      "modules": [
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
       ],
       "module_count": 1,
       "class_count": 1,

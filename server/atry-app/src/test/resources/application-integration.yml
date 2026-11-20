@@ -18,6 +18,7 @@ spring:
       timeout: 2s
   flyway:
     enabled: true
+    out-of-order: true
 
 server:
   port: 0

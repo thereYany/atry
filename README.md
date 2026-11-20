@@ -29,13 +29,13 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **444 用例**：单元 + 架构门禁 375（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
+| 测试 | **450 用例**：单元 + 架构门禁 381（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
 | CI | data-boundary 棘轮（跨模块表访问只降不升）+ backend（单测 / 集成 / JaCoCo） |
 
-## 可观测性与错误契约（0.2.0）
+## 可观测性与错误契约（0.2.0+）
 
 **日志**（`logback-spring.xml`，默认文本 / `prod` profile JSON）：
 
@@ -66,6 +66,20 @@ access method=POST path=/api/chat/x status=200 latencyMs=67 userId=2 tenantId=0 
 
 **OpenAPI**：`/v3/api-docs`、`/swagger-ui.html`（`SPRINGDOC_ENABLED`，生产 profile 默认关）。
 
+## 注册与认证（0.3.0）
+
+- `POST /api/auth/register`：用户名 + 密码 + 昵称 + 邮箱（可选），成功直接返回 token（免二次登录）
+- **不接验证码/短信/邮件**（按产品约束）：防刷靠 `@RateLimit(dimension=IP)`（默认每 IP 每小时 10 次）、
+  用户名/邮箱租户内唯一键、注册总开关；邮箱只做格式校验与唯一性，不验证真实性
+- 开关与默认角色：`app.auth.registration-enabled`、`app.auth.default-role`（默认 USER）
+- 登录/注册/登出/失败都写 `t_auth_event`（user_id/username/event_type/success/ip/ua/detail），
+  审计写入失败只告警、不影响认证主流程；失败详情只记分类（如 `BAD_CREDENTIALS`），不记密码/令牌
+- 登录节流沿用账号+IP 双维度（Redis + 本地降级）；注册限流走统一 `@RateLimit` 切面
+
+**数据库迁移约定**：内核迁移固定 `V1xx–V5xx`，垂直应用使用 `V9xx`。已有垂直库升级内核时，
+新内核迁移版本号小于已执行的垂直线，需要 `spring.flyway.out-of-order=true`（当前 chatry 如此）；
+P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -76,7 +90,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.2.0-exec.jar
+java -jar atry-app/target/atry-app-0.3.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。
