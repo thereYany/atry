@@ -26,6 +26,7 @@
         <module>atry-llm</module>
         <module>atry-metering</module>
         <module>atry-app</module>
+        <module>atry-desk</module>
     </modules>
 
     <properties>

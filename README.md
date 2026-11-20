@@ -9,13 +9,14 @@
 ## 模块
 
 ```
-atry-app            宿主应用：演示端点 + 运营接口（只装配内核）
- ├─ atry-llm        LLM 调用治理：多 provider 路由、四层超时、重试/熔断、多维限流、预算守卫、流式调用、调用记录与 outbox
- ├─ atry-metering   计量计费：预扣 → 结算/释放 → 不可变账本；定价（分 token 类型）、充值、对账、账单、过期回收
- ├─ atry-identity   身份：JWT、RBAC、邀请注册、登录节流、改密/会话失效
- ├─ atry-payment    支付：支付单状态机、渠道抽象（支付宝/模拟）、回调 + 主动查单兜底、发件箱、对账、退款数据与告警
- ├─ atry-contracts  契约：业务只依赖这里的接口（LlmOperations / MeteringOperations / PaymentOperations / 身份）
- └─ atry-platform   平台 starter：多租户 SQL 拦截、AOP（幂等/审计/限流/计量）、告警、对象存储、追踪、健康检查
+atry-app            内核演示宿主：演示端点 + 运营接口（只装配内核）
+atry-desk           垂直宿主示例（M1）：AI 客服工单/会话，复用内核身份、LLM 治理与计量
+ ├─ atry-llm         LLM 调用治理：多 provider 路由、四层超时、重试/熔断、多维限流、预算守卫、流式调用、调用记录与 outbox
+ ├─ atry-metering    计量计费：预扣 → 结算/释放 → 不可变账本；定价（分 token 类型）、充值、对账、账单、过期回收
+ ├─ atry-identity    身份：JWT、RBAC、邀请注册、登录节流、改密/会话失效
+ ├─ atry-payment     支付：支付单状态机、渠道抽象（支付宝/模拟）、回调 + 主动查单兜底、发件箱、对账、退款数据与告警
+ ├─ atry-contracts   契约：业务只依赖这里的接口（LlmOperations / MeteringOperations / PaymentOperations / 身份）
+ └─ atry-platform    平台 starter：多租户 SQL 拦截、AOP（幂等/审计/限流/计量）、告警、对象存储、追踪、健康检查
 examples/x-try-template  垂直接入模板：支付履约事件监听的最小示例
 ```
 
