@@ -29,7 +29,7 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **484 用例**：单元 + 架构门禁 410（`mvn test`），集成 70（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
+| 测试 | **488 用例**：单元 + 架构门禁 413（`mvn test`），集成 71（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
@@ -119,6 +119,16 @@ P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
   Dependabot 周更 Maven / GitHub Actions / Docker。
 
 
+## 支付交易收口（0.8.0）
+
+- 支付单状态 CAS：`markPaid/markFailed` 只允许从 `CREATED/PAYING` 迁移，影响行数为 0 时拒绝；
+  关闭/过期支付单收到成功回调不再写发件箱、不触发履约，落失败事件并告警。
+- 重复成功事件（支付单已 PAID）按幂等处理，不再重复发 `PAYMENT_SUCCEEDED`。
+- 新增 `PaymentStatus` 词表；关闭/过期后的迟到支付进入人工/退款处置（P8 接自动退款）。
+- 支付发起继续使用分布式锁；回调金额校验、事件唯一键、履约 bizNo 幂等保持不变。
+- 测试：单元 413、集成 71（4 skip），新增关闭支付单回调与已支付重复事件用例。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -129,7 +139,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.7.0-exec.jar
+java -jar atry-app/target/atry-app-0.8.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

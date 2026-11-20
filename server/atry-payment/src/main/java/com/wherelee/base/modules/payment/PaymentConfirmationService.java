@@ -120,20 +120,58 @@ public class PaymentConfirmationService {
 
         PaymentAttemptRecord attempt = paymentRepository.findLatestAttemptByPaymentNo(payment.paymentNo())
                 .orElse(null);
-        if (attempt != null) {
-            if (successEvent) {
-                paymentRepository.markAttemptSuccess(attempt.id());
-            } else {
-                paymentRepository.markAttemptFailed(attempt.id(), "PROVIDER_FAILED", "支付平台返回失败");
-            }
-        }
 
         if (successEvent) {
-            paymentOrderRepository.markPaid(payment.paymentNo(), notification.provider(), notification.tradeNo());
+            // 状态 CAS：只有 CREATED/PAYING 能进入 PAID。影响行数为 0 时先看当前状态，
+            // 已支付按重复事件处理；CLOSED/EXPIRED/FAILED 一律拒绝，绝不能继续写发件箱。
+            int updated = paymentOrderRepository.markPaid(payment.paymentNo(),
+                    notification.provider(), notification.tradeNo());
+            if (updated == 0) {
+                PaymentOrderView current = paymentOrderRepository.findByPaymentNo(payment.paymentNo())
+                        .orElse(payment);
+                if ("PAID".equals(current.status())) {
+                    if (attempt != null) {
+                        paymentRepository.markAttemptSuccess(attempt.id());
+                    }
+                    if (event != null) {
+                        paymentRepository.markEventProcessed(event.id());
+                    }
+                    metrics.callbackDuplicate();
+                    return result(true, true, "支付单已支付，重复成功事件已忽略", current);
+                }
+                rejectEvent(event, "支付单状态 " + current.status() + " 不允许确认支付");
+                alert("PAYMENT_STATE_CONFLICT", "支付单状态冲突 paymentNo=" + payment.paymentNo()
+                        + " status=" + current.status() + " eventKey=" + notification.eventKey());
+                return result(false, false, "支付单状态 " + current.status() + " 不允许确认支付", current);
+            }
+            if (attempt != null) {
+                paymentRepository.markAttemptSuccess(attempt.id());
+            }
             appendEvent(PaymentEventTypes.PAYMENT_SUCCEEDED, payment, notification);
             metrics.paymentConfirmed();
         } else {
-            paymentOrderRepository.markFailed(payment.paymentNo());
+            int updated = paymentOrderRepository.markFailed(payment.paymentNo());
+            if (updated == 0) {
+                PaymentOrderView current = paymentOrderRepository.findByPaymentNo(payment.paymentNo())
+                        .orElse(payment);
+                if ("FAILED".equals(current.status())) {
+                    if (attempt != null) {
+                        paymentRepository.markAttemptFailed(attempt.id(), "PROVIDER_FAILED", "支付平台返回失败");
+                    }
+                    if (event != null) {
+                        paymentRepository.markEventProcessed(event.id());
+                    }
+                    metrics.callbackDuplicate();
+                    return result(true, true, "支付单已失败，重复失败事件已忽略", current);
+                }
+                rejectEvent(event, "支付单状态 " + current.status() + " 不允许标记失败");
+                alert("PAYMENT_STATE_CONFLICT", "支付单状态冲突 paymentNo=" + payment.paymentNo()
+                        + " status=" + current.status() + " eventKey=" + notification.eventKey());
+                return result(false, false, "支付单状态 " + current.status() + " 不允许标记失败", current);
+            }
+            if (attempt != null) {
+                paymentRepository.markAttemptFailed(attempt.id(), "PROVIDER_FAILED", "支付平台返回失败");
+            }
             appendEvent(PaymentEventTypes.PAYMENT_FAILED, payment, notification);
             metrics.paymentFailed();
         }
@@ -141,9 +179,19 @@ public class PaymentConfirmationService {
             paymentRepository.markEventProcessed(event.id());
         }
         PaymentOrderView updated = paymentOrderRepository.findByPaymentNo(payment.paymentNo()).orElse(payment);
-        return new ConfirmationResult(true, false, successEvent ? "支付已确认" : "支付失败已入账",
-                updated.paymentNo(), updated.bizNo(), updated.status(),
-                updated.amountCents(), updated.channel(), updated.providerTradeNo());
+        return result(true, false, successEvent ? "支付已确认" : "支付失败已入账", updated);
+    }
+
+    private void rejectEvent(PaymentEventRecord event, String reason) {
+        if (event != null) {
+            paymentRepository.markEventFailed(event.id(), reason);
+        }
+    }
+
+    private ConfirmationResult result(boolean success, boolean duplicate, String message,
+                                      PaymentOrderView payment) {
+        return new ConfirmationResult(success, duplicate, message, payment.paymentNo(), payment.bizNo(),
+                payment.status(), payment.amountCents(), payment.channel(), payment.providerTradeNo());
     }
 
     private void appendEvent(String type, PaymentOrderView payment, PaymentNotification notification) {

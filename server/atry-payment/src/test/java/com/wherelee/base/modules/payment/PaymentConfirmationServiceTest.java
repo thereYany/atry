@@ -172,6 +172,7 @@ class PaymentConfirmationServiceTest {
                         "CREATED", 1000, null, null, null, null,
                         LocalDateTime.now(), null)));
         when(orderRepository.findByPaymentNo("P1")).thenReturn(Optional.of(order("FAILED", 1000)));
+        when(orderRepository.markFailed("P1")).thenReturn(1);
 
         PaymentConfirmationService.ConfirmationResult result = service.accept(
                 new PaymentNotification("MOCK", "EVT-1", "BIZ-1", "PAYMENT_FAILED",
@@ -185,6 +186,74 @@ class PaymentConfirmationServiceTest {
         verify(outboxRepository).append(captor.capture());
         assertThat(captor.getValue().eventType()).isEqualTo(PaymentEventTypes.PAYMENT_FAILED);
         assertThat(TenantContext.currentOrNull()).isNull();
+    }
+
+
+    @Test
+    void 关闭的支付单收到成功回调时拒绝且不写发件箱() {
+        when(orderRepository.findByBizNo("BIZ-1")).thenReturn(Optional.of(order("PAYING", 1000)));
+        when(paymentRepository.insertEvent(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyLong(), any())).thenReturn(true);
+        when(paymentRepository.findEvent("MOCK", "EVT-1")).thenReturn(Optional.of(
+                new PaymentEventRecord(11L, "MOCK", "EVT-1", null, "BIZ-1", "PAYMENT_SUCCESS",
+                        1000, "RECEIVED", null, LocalDateTime.now(), null)));
+        when(paymentRepository.findLatestAttemptByPaymentNo("P1")).thenReturn(Optional.of(
+                new PaymentAttemptRecord(5L, null, 1, "MOCK", "PROCESSING", "TRADE-1",
+                        "CREATED", 1000, null, null, null, null, LocalDateTime.now(), null)));
+        when(orderRepository.markPaid("P1", "MOCK", "TRADE-1")).thenReturn(0);
+        when(orderRepository.findByPaymentNo("P1")).thenReturn(Optional.of(order("CLOSED", 1000)));
+
+        PaymentConfirmationService.ConfirmationResult result = service.accept(success(1000));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("CLOSED");
+        verify(paymentRepository).markEventFailed(eq(11L), contains("CLOSED"));
+        verify(alertPublisher).publish(eq("PAYMENT_STATE_CONFLICT"), eq("ERROR"),
+                contains("status=CLOSED"), eq(false), anyString());
+        verify(paymentRepository, never()).markAttemptSuccess(anyLong());
+        verify(outboxRepository, never()).append(any());
+    }
+
+    @Test
+    void 已支付支付单收到另一个成功事件按重复处理() {
+        when(orderRepository.findByBizNo("BIZ-1")).thenReturn(Optional.of(order("PAID", 1000)));
+        when(paymentRepository.insertEvent(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyLong(), any())).thenReturn(true);
+        when(paymentRepository.findEvent("MOCK", "EVT-1")).thenReturn(Optional.of(
+                new PaymentEventRecord(11L, "MOCK", "EVT-1", null, "BIZ-1", "PAYMENT_SUCCESS",
+                        1000, "RECEIVED", null, LocalDateTime.now(), null)));
+        when(paymentRepository.findLatestAttemptByPaymentNo("P1")).thenReturn(Optional.empty());
+        when(orderRepository.markPaid("P1", "MOCK", "TRADE-1")).thenReturn(0);
+        when(orderRepository.findByPaymentNo("P1")).thenReturn(Optional.of(order("PAID", 1000)));
+
+        PaymentConfirmationService.ConfirmationResult result = service.accept(success(1000));
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.duplicate()).isTrue();
+        verify(paymentRepository).markEventProcessed(11L);
+        verify(outboxRepository, never()).append(any());
+    }
+
+    @Test
+    void 已支付支付单收到失败事件时拒绝() {
+        when(orderRepository.findByBizNo("BIZ-1")).thenReturn(Optional.of(order("PAID", 1000)));
+        when(paymentRepository.insertEvent(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyLong(), any())).thenReturn(true);
+        when(paymentRepository.findEvent("MOCK", "EVT-1")).thenReturn(Optional.of(
+                new PaymentEventRecord(11L, "MOCK", "EVT-1", null, "BIZ-1", "PAYMENT_FAILED",
+                        1000, "RECEIVED", null, LocalDateTime.now(), null)));
+        when(paymentRepository.findLatestAttemptByPaymentNo("P1")).thenReturn(Optional.empty());
+        when(orderRepository.markFailed("P1")).thenReturn(0);
+        when(orderRepository.findByPaymentNo("P1")).thenReturn(Optional.of(order("PAID", 1000)));
+
+        PaymentConfirmationService.ConfirmationResult result = service.accept(
+                new PaymentNotification("MOCK", "EVT-1", "BIZ-1", "PAYMENT_FAILED",
+                        1000, "TRADE-1", null));
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.message()).contains("PAID");
+        verify(paymentRepository).markEventFailed(eq(11L), contains("PAID"));
+        verify(outboxRepository, never()).append(any());
     }
 
     @Test

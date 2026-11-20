@@ -257,6 +257,29 @@ class PaymentFlowIntegrationTest extends IntegrationTestSupport {
                 .noneMatch(diff -> diff.id() == diffId);
     }
 
+
+    @Test
+    void 关闭支付单收到成功回调时拒绝且不写发件箱() {
+        long tenant = newTenant();
+        String bizNo = unique("CLOSED");
+        String paymentNo = initiate(tenant, bizNo);
+        jdbc.update("UPDATE t_payment_order SET status = 'CLOSED' WHERE payment_no = ? AND tenant_id = ?",
+                paymentNo, tenant);
+        int outboxBefore = countRows("SELECT COUNT(*) FROM t_payment_outbox WHERE aggregate_no = ?", paymentNo);
+
+        PaymentConfirmationService.ConfirmationResult result = deliverCallback(
+                tenant, paymentNo, "EVT-CLOSED-" + paymentNo, AMOUNT);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.status()).isEqualTo("CLOSED");
+        assertThat(countRows("SELECT COUNT(*) FROM t_payment_order WHERE payment_no = ? AND status = 'CLOSED'",
+                paymentNo)).isEqualTo(1);
+        assertThat(countRows("SELECT COUNT(*) FROM t_payment_outbox WHERE aggregate_no = ?", paymentNo))
+                .isEqualTo(outboxBefore);
+        assertThat(countRows("SELECT COUNT(*) FROM t_payment_event WHERE payment_no = ? "
+                + "AND process_status = 'FAILED'", paymentNo)).isEqualTo(1);
+    }
+
     /** 绕过渠道，直接把支付单标记为 PAID（模拟历史数据/渠道对账场景）。 */
     private void authenticatePaid(String paymentNo) {
         // 渠道账单数据源读取支付尝试的 status/provider 事实：必须同步置为成功

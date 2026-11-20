@@ -115,7 +115,7 @@ public class PaymentOrderRepository {
                 UPDATE t_payment_order
                 SET status = 'PAID', channel = ?, provider_trade_no = ?, paid_at = CURRENT_TIMESTAMP(3),
                     source_updated_at = CURRENT_TIMESTAMP(3), version = version + 1
-                WHERE payment_no = ? AND status IN ('CREATED', 'PAYING', 'PAID')
+                WHERE payment_no = ? AND status IN ('CREATED', 'PAYING')
                 """, channel, providerTradeNo, paymentNo);
     }
 
