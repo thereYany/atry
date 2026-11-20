@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.wherelee</groupId>
         <artifactId>atry-parent</artifactId>
-        <version>0.5.0</version>
+        <version>0.6.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>atry-app</artifactId>
@@ -54,6 +54,18 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>3.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <version>1.21.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.21.4</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

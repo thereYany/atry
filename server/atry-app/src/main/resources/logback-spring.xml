@@ -108,8 +108,8 @@
                 <customFields>{"app":"${APP_NAME}","env":"${LOG_ENV}"}</customFields>
                 <includeMdc>true</includeMdc>
                 <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
-                    <value>(?i)\b(?:password|passwd|pwd|token|access_token|refresh_token|authorization|secret|api[_-]?key|credential)\b\s*[=:]\s*[^&amp;,\s"'}]+</value>
                     <value>(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+</value>
+                    <value>(?i)\b(?:password|passwd|pwd|token|access_token|refresh_token|authorization|secret|api[_-]?key|credential)\b\s*[=:]\s*[^&amp;,\s"'}]+</value>
                     <value>\b1[3-9]\d{9}\b</value>
                     <value>\b\d{17}[\dXx]\b</value>
                     <value>[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}</value>
@@ -132,8 +132,8 @@
                 <customFields>{"app":"${APP_NAME}","env":"${LOG_ENV}"}</customFields>
                 <includeMdc>true</includeMdc>
                 <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
-                    <value>(?i)\b(?:password|passwd|pwd|token|access_token|refresh_token|authorization|secret|api[_-]?key|credential)\b\s*[=:]\s*[^&amp;,\s"'}]+</value>
                     <value>(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+</value>
+                    <value>(?i)\b(?:password|passwd|pwd|token|access_token|refresh_token|authorization|secret|api[_-]?key|credential)\b\s*[=:]\s*[^&amp;,\s"'}]+</value>
                     <value>\b1[3-9]\d{9}\b</value>
                     <value>\b\d{17}[\dXx]\b</value>
                     <value>[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}</value>

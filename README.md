@@ -29,7 +29,7 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **470 用例**：单元 + 架构门禁 401（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
+| 测试 | **483 用例**：单元 + 架构门禁 410（`mvn test`），集成 69（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
@@ -91,6 +91,23 @@ P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
 - **限流配置化**：注解默认值可被 `app.rate-limit.<key>.limit` / `.window-seconds` 覆盖；命中打 `atry.rate_limit.blocked` 指标并发布 `RateLimitExceededEvent`（注册 429 会补写 `REGISTER_THROTTLED` 审计）。
 - **管理接口下沉**：`/api/admin/users`、`/api/admin/roles`、`/api/admin/permissions`（含分配角色、重置密码）进入 identity 内核，垂直应用直接复用。
 
+## 持久层试点与工程纪律（0.6.0）
+
+**MyBatis 试点（只迁移复杂读，写/事务仍是 JdbcTemplate）**
+- `/api/admin/users` 读路径改为 MyBatis XML（`AccountQueryMapper`）：动态过滤 + 分页，SQL 显式带 `tenant_id`。
+- `MybatisTenantGuard`：MyBatis 不走 `TenantAwareJdbcTemplate`，因此 Mapper SQL 缺少 `tenant_id` 时 **fail-fast** 拒绝；系统作用域（定时任务/回调）跳过。
+- A/B 记录：旧实现 88 行动态拼 SQL → 新 mapper XML 43 行 + Service 55 行；单表索引查询，100 次请求 p95 ≈ 35ms（本机），无性能回退；结论：**复杂读用 MyBatis，写/事务不迁移**。
+
+**Flyway 纪律**
+- 版本段：identity 1xx / payment 2xx / platform 3xx / llm 4xx / metering 5xx；`tools/flyway_discipline.py` 校验文件名、段归属、全局唯一与已发布校验和（`docs/generated/flyway-checksums.json`）。
+- CI 的 data-boundary job 增加 `--verify`；修改历史迁移或新增未登记迁移会直接失败。
+
+**其它**
+- Testcontainers：`TestcontainersAuthIntegrationTest` 用 MySQL 8 + Redis 7 容器跑注册全链路；无 Docker 自动跳过。
+- 审计保留：`t_admin_audit_log` / `t_auth_event` 按 `app.audit.retention-days`（默认 180 天）分批清理，补 `created_at` 索引；cron 默认 03:20。
+- JSON 日志脱敏回归：`LogbackMaskingConfigTest` 直接解析 logback 配置里的正则，防止配置笔误泄露凭据。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -101,7 +118,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.5.0-exec.jar
+java -jar atry-app/target/atry-app-0.6.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

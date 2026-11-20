@@ -14,7 +14,8 @@ import org.springframework.context.annotation.Configuration;
  * 不需要在每个宿主里重复声明 {@code @MapperScan}/{@code @ConfigurationPropertiesScan}。</p>
  */
 @Configuration(proxyBeanMethods = false)
-@MapperScan("com.wherelee.base.modules.identity.invitation")
+@MapperScan({"com.wherelee.base.modules.identity.invitation",
+        "com.wherelee.base.modules.identity.user"})
 @EnableConfigurationProperties({JwtProperties.class, InvitationProperties.class, AuthProperties.class})
 public class IdentityConfig {
 }

@@ -1,6 +1,7 @@
 package com.wherelee.base.modules.platform.config;
 
 import com.wherelee.base.modules.platform.config.SecurityProperties;
+import com.wherelee.base.modules.platform.audit.AuditRetentionProperties;
 import com.wherelee.base.modules.platform.logging.LoggingProperties;
 import com.wherelee.base.modules.platform.storage.StorageProperties;
 import com.wherelee.base.modules.platform.tenant.TenantProperties;
@@ -17,7 +18,7 @@ import org.springframework.context.annotation.FilterType;
  */
 @AutoConfiguration
 @EnableConfigurationProperties({SecurityProperties.class, TenantProperties.class, StorageProperties.class,
-        LoggingProperties.class})
+        LoggingProperties.class, AuditRetentionProperties.class})
 @ComponentScan(
         basePackages = "com.wherelee.base.modules.platform",
         excludeFilters = @ComponentScan.Filter(

@@ -15,6 +15,8 @@ jobs:
           python-version: '3.10'
       - name: 数据边界棘轮检查（跨模块表 / 多表 SQL 只降不升）
         run: python3 tools/table_access_inventory.py --baseline docs/generated/table-access-baseline.json
+      - name: Flyway 迁移纪律（版本段 / 唯一性 / 已发布校验和）
+        run: python3 tools/flyway_discipline.py --verify
 
   backend:
     runs-on: ubuntu-latest
