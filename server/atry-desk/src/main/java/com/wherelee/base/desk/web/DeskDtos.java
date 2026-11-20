@@ -19,6 +19,12 @@ public final class DeskDtos {
     ) {
     }
 
+    /** 追加一条用户消息（AI 回复以 SSE 返回）。 */
+    public record SendMessageRequest(
+            @NotBlank(message = "消息不能为空") @Size(max = 2000, message = "消息不能超过 2000 字符") String message
+    ) {
+    }
+
     public record TicketView(String ticketNo, String subject, String status,
                              LocalDateTime createdAt, LocalDateTime updatedAt) {
     }
