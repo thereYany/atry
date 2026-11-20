@@ -127,6 +127,13 @@ app:
       connect-timeout-ms: ${ALIPAY_CONNECT_TIMEOUT_MS:5000}
       read-timeout-ms: ${ALIPAY_READ_TIMEOUT_MS:15000}
 
+  logging:
+    # 访问日志：每条 API 请求一行；慢 SQL 默认关，本地/预发用 SLOW_SQL_ENABLED=true 打开
+    access-log-enabled: ${LOG_ACCESS_ENABLED:true}
+    access-log-slow-ms: ${ACCESS_LOG_SLOW_MS:1000}
+    slow-sql-enabled: ${SLOW_SQL_ENABLED:false}
+    slow-sql-threshold-ms: ${SLOW_SQL_THRESHOLD_MS:200}
+
 management:
   server:
     port: ${MANAGEMENT_PORT:9091}
@@ -171,18 +178,21 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
 
+# 日志输出（文件/格式/脱敏/滚动）由 logback-spring.xml 接管，这里只留级别
 logging:
-  file:
-    name: ${LOG_FILE:logs/atry.log}
-  logback:
-    rollingpolicy:
-      max-file-size: 20MB
-      max-history: 14
-      total-size-cap: 1GB
-  pattern:
-    level: "%5p [traceId=%X{traceId:-}]"
   level:
-    com.wherelee.base: info
+    com.wherelee.base: ${LOG_LEVEL_BASE:info}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    # 生产默认关闭文档端点；需要时显式 SPRINGDOC_ENABLED=true
+    enabled: ${SPRINGDOC_ENABLED:true}
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: ${SPRINGDOC_ENABLED:true}
+    operations-sorter: alpha
+  packages-to-scan: com.wherelee.base
 
 atry:
   demo:

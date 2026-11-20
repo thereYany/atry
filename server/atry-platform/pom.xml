@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.wherelee</groupId>
         <artifactId>atry-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>atry-platform</artifactId>
@@ -18,6 +18,12 @@
             <groupId>com.qcloud</groupId>
             <artifactId>cos_api</artifactId>
             <version>${cos.version}</version>
+        </dependency>
+        <!-- 慢 SQL 探针：只包 DataSource，不侵入业务；默认关闭，靠 app.logging.slow-sql-enabled 打开 -->
+        <dependency>
+            <groupId>net.ttddyy</groupId>
+            <artifactId>datasource-proxy</artifactId>
+            <version>1.11.1</version>
         </dependency>
     </dependencies>
 </project>

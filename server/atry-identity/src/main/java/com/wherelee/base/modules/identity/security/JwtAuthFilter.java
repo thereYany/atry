@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -76,10 +77,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             request.setAttribute("userId", user.id());
             request.setAttribute("role", user.role());
             request.setAttribute("tenantId", payload.tenantId());
+            // 写进 MDC：后续所有日志行都自动带 userId/tenantId，排障不用来回拼请求
+            MDC.put("userId", String.valueOf(user.id()));
+            MDC.put("tenantId", String.valueOf(payload.tenantId()));
             chain.doFilter(request, response);
         } catch (Exception e) {
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "登录已失效，请重新登录");
         } finally {
+            MDC.remove("userId");
+            MDC.remove("tenantId");
             TenantContext.clear();
         }
     }

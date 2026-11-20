@@ -13,7 +13,19 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
 
+# 生产默认关闭接口文档与慢 SQL 探针
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}
+
 app:
+  logging:
+    access-log-enabled: ${LOG_ACCESS_ENABLED:true}
+    access-log-slow-ms: ${ACCESS_LOG_SLOW_MS:1000}
+    slow-sql-enabled: ${SLOW_SQL_ENABLED:false}
+    slow-sql-threshold-ms: ${SLOW_SQL_THRESHOLD_MS:200}
   tenant:
     enforce: true
   security:

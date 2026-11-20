@@ -29,11 +29,42 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **433 用例**：单元 + 架构门禁 364（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
+| 测试 | **444 用例**：单元 + 架构门禁 375（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
 | CI | data-boundary 棘轮（跨模块表访问只降不升）+ backend（单测 / 集成 / JaCoCo） |
+
+## 可观测性与错误契约（0.2.0）
+
+**日志**（`logback-spring.xml`，默认文本 / `prod` profile JSON）：
+
+- 每行带 `traceId / userId / tenantId`（MDC）；消息统一走 `%maskedMsg` 脱敏
+- 三份文件：`logs/<app>.log`（应用）、`-error.log`（仅 ERROR）、`-access.log`（访问日志）
+- 异步写盘（queueSize 4096，不静默丢日志）；滚动 20MB/14 天/1GB
+- 脱敏规则：密码/令牌/密钥整段 `******`，手机号/身份证/邮箱打码；JSON 输出额外用 MaskingJsonGeneratorDecorator
+
+**访问日志**（`AccessLogFilter`）：
+
+```
+access method=POST path=/api/chat/x status=200 latencyMs=67 userId=2 tenantId=0 ip=1.2.3.4 slow=false traceId=... ua="..."
+```
+
+只记 path 不记 query；健康检查/静态资源跳过；SSE 等异步请求在 `onComplete` 记录**完整流时长**。
+开关：`LOG_ACCESS_ENABLED`（默认 true）、`ACCESS_LOG_SLOW_MS`（慢请求标记阈值，默认 1000ms）。
+
+**统一错误体**（`GlobalExceptionHandler`）：
+
+```json
+{"code":"VALIDATION_FAILED","message":"用户名不能为空","traceId":"...","path":"/api/auth/register",
+ "timestamp":"2026-11-21T...Z","details":[{"field":"username","message":"用户名不能为空"}]}
+```
+
+错误码目录见 `ErrorCodes`（只增不改）；未知异常/数据库异常只返回兜底文案，堆栈与 SQL 只进日志。
+
+**慢 SQL**：`SLOW_SQL_ENABLED=true`（默认关）+ `SLOW_SQL_THRESHOLD_MS=200`；只记录超阈值语句并脱敏，不带参数值。
+
+**OpenAPI**：`/v3/api-docs`、`/swagger-ui.html`（`SPRINGDOC_ENABLED`，生产 profile 默认关）。
 
 ## 快速开始
 
@@ -45,7 +76,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.1.0-exec.jar
+java -jar atry-app/target/atry-app-0.2.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

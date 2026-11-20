@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.wherelee</groupId>
         <artifactId>atry-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>atry-app</artifactId>
@@ -41,6 +41,19 @@
             <groupId>com.wherelee</groupId>
             <artifactId>atry-metering</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- JSON 日志（生产 profile 使用）；9.x 适配 Jackson 3 / Boot 4 -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>9.0</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- OpenAPI / Swagger UI（3.x 适配 Spring Boot 4） -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.2.0</version>
         </dependency>
     </dependencies>
 
