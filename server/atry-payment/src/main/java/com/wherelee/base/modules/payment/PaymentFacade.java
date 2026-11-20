@@ -1,6 +1,7 @@
 package com.wherelee.base.modules.payment;
 
 import com.wherelee.base.modules.contracts.payment.PaymentOperations;
+import com.wherelee.base.modules.platform.aop.DistributedLock;
 import com.wherelee.base.modules.platform.common.BizException;
 import com.wherelee.base.modules.platform.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,7 @@ public class PaymentFacade implements PaymentOperations {
     }
 
     @Override
+    @DistributedLock(key = "payment:initiate", waitMs = 500, leaseMs = 10_000)
     public InitiateResult initiate(InitiateCommand command) {
         validate(command);
         Prepared prepared = transactionTemplate.execute(status -> prepare(command));

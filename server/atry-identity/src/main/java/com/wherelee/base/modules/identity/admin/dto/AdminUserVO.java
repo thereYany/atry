@@ -1,4 +1,4 @@
-package com.wherelee.base.app.admin.dto;
+package com.wherelee.base.modules.identity.admin.dto;
 
 import lombok.Data;
 

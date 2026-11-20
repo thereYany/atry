@@ -1,9 +1,9 @@
-package com.wherelee.base.app.admin;
+package com.wherelee.base.modules.identity.admin;
 
-import com.wherelee.base.app.admin.dto.AdminUserVO;
-import com.wherelee.base.app.admin.dto.ChangeStatusRequest;
-import com.wherelee.base.app.admin.dto.CreateUserRequest;
-import com.wherelee.base.app.admin.dto.ResetPasswordRequest;
+import com.wherelee.base.modules.identity.admin.dto.AdminUserVO;
+import com.wherelee.base.modules.identity.admin.dto.ChangeStatusRequest;
+import com.wherelee.base.modules.identity.admin.dto.CreateUserRequest;
+import com.wherelee.base.modules.identity.admin.dto.ResetPasswordRequest;
 import com.wherelee.base.modules.platform.aop.AdminAudit;
 import com.wherelee.base.modules.platform.aop.Idempotent;
 import com.wherelee.base.modules.platform.aop.Measured;

@@ -1,6 +1,6 @@
 {
   "summary": {
-    "table_count": 31,
+    "table_count": 32,
     "cross_module_tables": [],
     "multi_table_class_count": 6,
     "multi_table_classes": [
@@ -419,6 +419,18 @@
         "KernelDataInitializer",
         "RbacRepository"
       ]
+    },
+    "t_user_session": {
+      "modules": [
+        "identity"
+      ],
+      "effective_modules": [
+        "identity"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
+      "multi_table_classes": []
     }
   }
 }

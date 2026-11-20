@@ -4,6 +4,7 @@ package com.wherelee.base.modules.identity.auth;
 public final class AuthEventTypes {
 
     public static final String REGISTER = "REGISTER";
+    public static final String REGISTER_THROTTLED = "REGISTER_THROTTLED";
     public static final String LOGIN_SUCCESS = "LOGIN_SUCCESS";
     public static final String LOGIN_FAILURE = "LOGIN_FAILURE";
     public static final String LOGOUT = "LOGOUT";

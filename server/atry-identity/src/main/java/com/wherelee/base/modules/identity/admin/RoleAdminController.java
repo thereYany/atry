@@ -1,4 +1,4 @@
-package com.wherelee.base.app.admin;
+package com.wherelee.base.modules.identity.admin;
 
 import com.wherelee.base.modules.contracts.identity.RoleAdminOperations;
 import com.wherelee.base.modules.platform.aop.AdminAudit;

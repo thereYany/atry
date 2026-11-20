@@ -9,6 +9,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @Slf4j
 @Aspect
 @Component
+@Order(AspectOrders.IDEMPOTENT)
 public class IdempotentAspect {
 
     private final StringRedisTemplate redis;

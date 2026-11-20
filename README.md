@@ -29,7 +29,7 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **457 用例**：单元 + 架构门禁 388（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
+| 测试 | **470 用例**：单元 + 架构门禁 401（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
@@ -83,6 +83,13 @@ access method=POST path=/api/chat/x status=200 latencyMs=67 userId=2 tenantId=0 
 **数据库迁移约定**：内核迁移固定 `V1xx–V5xx`，垂直应用使用 `V9xx`。已有垂直库升级内核时，
 新内核迁移版本号小于已执行的垂直线，需要 `spring.flyway.out-of-order=true`（当前 chatry 如此）；
 P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
+## 权限与平台能力（0.5.0）
+
+- **RBAC 多实例失效**：Caffeine 本地缓存 + Redis 频道 `atry:rbac:invalidate` 广播；改角色/授权后所有实例即时失效（实测两实例 60ms 内生效），Redis 不可用时最迟 2 分钟 TTL 兜底。
+- **`@DistributedLock`**：Redis `SET NX PX` + Lua 比对 token 解锁，支持 `waitMs/leaseMs/SpEL key`；Redis 故障 fail-closed（503）。已用于支付发起入口。
+- **切面顺序**：`AspectOrders` 常量 + 反射测试：Measured(-1100) → Permission(-1000) → RateLimit(-900) → Idempotent(-800) → DistributedLock(-700) → Audit(100) → Metering(500)。
+- **限流配置化**：注解默认值可被 `app.rate-limit.<key>.limit` / `.window-seconds` 覆盖；命中打 `atry.rate_limit.blocked` 指标并发布 `RateLimitExceededEvent`（注册 429 会补写 `REGISTER_THROTTLED` 审计）。
+- **管理接口下沉**：`/api/admin/users`、`/api/admin/roles`、`/api/admin/permissions`（含分配角色、重置密码）进入 identity 内核，垂直应用直接复用。
 
 ## 快速开始
 
@@ -94,7 +101,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.4.0-exec.jar
+java -jar atry-app/target/atry-app-0.5.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

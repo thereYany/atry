@@ -32,6 +32,11 @@ public class AuthAuditService {
         record(userId, username, AuthEventTypes.REGISTER, true, ip, userAgent, null);
     }
 
+    /** 注册被限流：没有账号信息，只记录来源 IP 与事件类型。 */
+    public void registerThrottled(String ip) {
+        record(null, null, AuthEventTypes.REGISTER_THROTTLED, false, ip, null, "RATE_LIMITED");
+    }
+
     public void logout(Long userId, String username, String ip, String userAgent) {
         record(userId, username, AuthEventTypes.LOGOUT, true, ip, userAgent, null);
     }

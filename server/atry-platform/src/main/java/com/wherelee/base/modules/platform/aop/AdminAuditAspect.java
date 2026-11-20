@@ -14,7 +14,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Slf4j
 @Aspect
 @Component
-@Order(20)
+@Order(AspectOrders.AUDIT)
 public class AdminAuditAspect {
 
     private final AdminAuditRepository repository;

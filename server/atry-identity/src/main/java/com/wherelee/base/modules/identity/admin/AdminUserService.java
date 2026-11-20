@@ -1,7 +1,7 @@
-package com.wherelee.base.app.admin;
+package com.wherelee.base.modules.identity.admin;
 
-import com.wherelee.base.app.admin.dto.AdminUserVO;
-import com.wherelee.base.app.admin.dto.CreateUserRequest;
+import com.wherelee.base.modules.identity.admin.dto.AdminUserVO;
+import com.wherelee.base.modules.identity.admin.dto.CreateUserRequest;
 import com.wherelee.base.modules.contracts.identity.AccountQuery;
 import com.wherelee.base.modules.contracts.identity.AccountQuery.AccountProfile;
 import com.wherelee.base.modules.contracts.identity.UserAccountOperations;

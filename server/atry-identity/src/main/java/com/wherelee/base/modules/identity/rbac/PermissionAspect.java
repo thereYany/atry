@@ -1,6 +1,7 @@
 package com.wherelee.base.modules.identity.rbac;
 
 
+import com.wherelee.base.modules.platform.aop.AspectOrders;
 import com.wherelee.base.modules.platform.aop.RequirePermission;
 import com.wherelee.base.modules.platform.common.BizException;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -14,7 +15,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Aspect
 @Component
-@Order(1)
+@Order(AspectOrders.PERMISSION)
 public class PermissionAspect {
 
     private final PermissionService permissionService;
