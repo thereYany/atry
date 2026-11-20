@@ -30,10 +30,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final com.wherelee.base.modules.identity.session.SessionService sessionService;
 
-    public JwtAuthFilter(JwtService jwtService, UserRepository userRepository) {
+    public JwtAuthFilter(JwtService jwtService, UserRepository userRepository,
+                         com.wherelee.base.modules.identity.session.SessionService sessionService) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.sessionService = sessionService;
     }
 
     @Override
@@ -69,6 +72,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "登录已失效，请重新登录");
                 return;
             }
+            if (payload.sessionId() != null && !payload.sessionId().isBlank()
+                    && !sessionService.isActive(payload.tenantId(), payload.sessionId())) {
+                writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "登录已失效，请重新登录");
+                return;
+            }
             if (user.mustChangePassword() && !allowedBeforePasswordChange(path)) {
                 writeError(response, 428, "请先修改初始密码");
                 return;
@@ -78,6 +86,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             request.setAttribute("userId", user.id());
             request.setAttribute("role", user.role());
             request.setAttribute("username", user.username());
+            if (payload.sessionId() != null && !payload.sessionId().isBlank()) {
+                request.setAttribute("sessionId", payload.sessionId());
+            }
             request.setAttribute("tenantId", payload.tenantId());
             // 写进 MDC：后续所有日志行都自动带 userId/tenantId，排障不用来回拼请求
             MDC.put("userId", String.valueOf(user.id()));

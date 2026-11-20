@@ -6,6 +6,7 @@ import com.wherelee.base.modules.identity.auth.dto.LoginResponse;
 import com.wherelee.base.modules.identity.auth.dto.RegisterRequest;
 import com.wherelee.base.modules.identity.auth.dto.UserInfo;
 import com.wherelee.base.modules.identity.security.JwtService;
+import com.wherelee.base.modules.identity.session.SessionService;
 import com.wherelee.base.modules.identity.user.User;
 import com.wherelee.base.modules.identity.user.UserRepository;
 import com.wherelee.base.modules.platform.common.BizException;
@@ -30,23 +31,28 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthProperties authProperties;
+    private final SessionService sessionService;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JwtService jwtService, AuthProperties authProperties) {
+                       JwtService jwtService, AuthProperties authProperties,
+                       SessionService sessionService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authProperties = authProperties;
+        this.sessionService = sessionService;
     }
 
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String clientIp, String userAgent) {
         User user = userRepository.findByUsername(request.username().trim())
                 .filter(User::isActive)
                 .orElse(null);
         if (user == null || !passwordEncoder.matches(request.password(), user.passwordHash())) {
             throw BizException.unauthorized("账号或密码不正确");
         }
-        return new LoginResponse(jwtService.createToken(user), toInfo(user), user.mustChangePassword());
+        String sessionId = sessionService.create(user.tenantId(), user.id(), clientIp, userAgent);
+        return new LoginResponse(jwtService.createToken(user, sessionId), toInfo(user),
+                user.mustChangePassword());
     }
 
     /**
@@ -55,7 +61,7 @@ public class AuthService {
      * <p>用户名/邮箱撞唯一键时返回 409；注册收益（赠送额度）由垂直应用通过事件/首访幂等发放。</p>
      */
     @Transactional
-    public LoginResponse register(RegisterRequest request) {
+    public LoginResponse register(RegisterRequest request, String clientIp, String userAgent) {
         if (!authProperties.registrationEnabled()) {
             throw new BizException(HttpStatus.FORBIDDEN, "REGISTRATION_DISABLED", "注册暂未开放");
         }
@@ -79,7 +85,8 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .filter(User::isActive)
                 .orElseThrow(() -> new IllegalStateException("注册后账号不可读"));
-        return new LoginResponse(jwtService.createToken(user), toInfo(user), false);
+        String sessionId = sessionService.create(user.tenantId(), user.id(), clientIp, userAgent);
+        return new LoginResponse(jwtService.createToken(user, sessionId), toInfo(user), false);
     }
 
     public UserInfo me(Long userId) {

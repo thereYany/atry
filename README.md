@@ -29,7 +29,7 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **450 用例**：单元 + 架构门禁 381（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
+| 测试 | **457 用例**：单元 + 架构门禁 388（`mvn test`），集成（真实 MySQL + Redis）65（`-Pintegration`），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
@@ -75,6 +75,10 @@ access method=POST path=/api/chat/x status=200 latencyMs=67 userId=2 tenantId=0 
 - 登录/注册/登出/失败都写 `t_auth_event`（user_id/username/event_type/success/ip/ua/detail），
   审计写入失败只告警、不影响认证主流程；失败详情只记分类（如 `BAD_CREDENTIALS`），不记密码/令牌
 - 登录节流沿用账号+IP 双维度（Redis + 本地降级）；注册限流走统一 `@RateLimit` 切面
+- **会话管理（0.4.0）**：登录/注册签发带 `sid` 的 token 并落 `t_user_session`；Redis 活跃标记 + DB 兜底，
+  支持 `GET /api/auth/sessions`（当前设备标记）、`DELETE /api/auth/sessions/{sid}`（单会话踢下线）、
+  `POST /api/auth/logout`（吊销当前会话）。多实例即时生效；无 sid 的旧 token 仅做用户状态/版本校验。
+  每日清理过期/已吊销会话（保留 30 天，可配）。
 
 **数据库迁移约定**：内核迁移固定 `V1xx–V5xx`，垂直应用使用 `V9xx`。已有垂直库升级内核时，
 新内核迁移版本号小于已执行的垂直线，需要 `spring.flyway.out-of-order=true`（当前 chatry 如此）；
@@ -90,7 +94,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.3.0-exec.jar
+java -jar atry-app/target/atry-app-0.4.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

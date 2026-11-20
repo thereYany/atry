@@ -32,8 +32,13 @@ public class JwtService {
     }
 
     public String createToken(User user) {
+        return createToken(user, null);
+    }
+
+    /** 带会话 id（sid）的 token：sid 用于服务端单会话吊销。 */
+    public String createToken(User user, String sessionId) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .issuer(issuer)
                 .audience().add(audience).and()
                 .subject(String.valueOf(user.id()))
@@ -41,9 +46,11 @@ public class JwtService {
                 .claim("ver", user.tokenVersion())
                 .claim("tid", user.tenantId())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(ttl)))
-                .signWith(key)
-                .compact();
+                .expiration(Date.from(now.plus(ttl)));
+        if (sessionId != null && !sessionId.isBlank()) {
+            builder.claim("sid", sessionId);
+        }
+        return builder.signWith(key).compact();
     }
 
     public TokenPayload parse(String token) {
@@ -56,11 +63,18 @@ public class JwtService {
                 .getPayload();
         Integer version = claims.get("ver", Integer.class);
         Long tenantId = claims.get("tid", Long.class);
+        String sessionId = claims.get("sid", String.class);
         return new TokenPayload(Long.valueOf(claims.getSubject()),
                 version == null ? -1 : version,
-                tenantId == null ? 0L : tenantId);
+                tenantId == null ? 0L : tenantId,
+                sessionId);
     }
 
-    public record TokenPayload(Long userId, int tokenVersion, Long tenantId) {
+    public record TokenPayload(Long userId, int tokenVersion, Long tenantId, String sessionId) {
+
+        /** 兼容旧构造（无 sid 的 token）。 */
+        public TokenPayload(Long userId, int tokenVersion, Long tenantId) {
+            this(userId, tokenVersion, tenantId, null);
+        }
     }
 }

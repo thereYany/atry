@@ -3,6 +3,7 @@ package com.wherelee.base.modules.identity.auth;
 import com.wherelee.base.modules.identity.auth.dto.LoginResponse;
 import com.wherelee.base.modules.identity.auth.dto.RegisterRequest;
 import com.wherelee.base.modules.identity.security.JwtService;
+import com.wherelee.base.modules.identity.session.SessionService;
 import com.wherelee.base.modules.identity.user.User;
 import com.wherelee.base.modules.identity.user.UserRepository;
 import com.wherelee.base.modules.platform.common.BizException;
@@ -38,13 +39,15 @@ class AuthServiceRegisterTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private JwtService jwtService;
+    @Mock
+    private SessionService sessionService;
 
     private AuthService service;
 
     @BeforeEach
     void setUp() {
         service = new AuthService(userRepository, passwordEncoder, jwtService,
-                new AuthProperties(true, "USER"));
+                new AuthProperties(true, "USER"), sessionService);
     }
 
     @Test
@@ -54,12 +57,14 @@ class AuthServiceRegisterTest {
         when(passwordEncoder.encode("Passw0rd!")).thenReturn("$hash$");
         when(userRepository.create(eq("alice"), eq("$hash$"), eq("爱丽丝"), eq("USER"),
                 eq(false), eq("alice@example.com"))).thenReturn(7L);
-        when(jwtService.createToken(any(User.class))).thenReturn("token-7");
+        when(sessionService.create(0L, 7L, "127.0.0.1", "junit")).thenReturn("sid-7");
+        when(jwtService.createToken(any(User.class), eq("sid-7"))).thenReturn("token-7");
         when(userRepository.findById(7L)).thenReturn(Optional.of(
                 new User(7L, 0L, "alice", "$hash$", "爱丽丝", "USER", "ACTIVE", false, 0)));
 
         LoginResponse response = service.register(
-                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", "Alice@Example.com "));
+                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", "Alice@Example.com "),
+                "127.0.0.1", "junit");
 
         assertThat(response.token()).isEqualTo("token-7");
         assertThat(response.user().id()).isEqualTo(7L);
@@ -73,7 +78,7 @@ class AuthServiceRegisterTest {
                 new User(1L, 0L, "alice", "h", "n", "USER", "ACTIVE", false, 0)));
 
         assertThatThrownBy(() -> service.register(
-                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", null)))
+                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", null), "127.0.0.1", "junit"))
                 .isInstanceOfSatisfying(BizException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.code()).isEqualTo("USERNAME_TAKEN");
@@ -88,7 +93,7 @@ class AuthServiceRegisterTest {
         when(userRepository.existsByEmail("a@b.com")).thenReturn(true);
 
         assertThatThrownBy(() -> service.register(
-                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", "a@b.com")))
+                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", "a@b.com"), "127.0.0.1", "junit"))
                 .isInstanceOfSatisfying(BizException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.code()).isEqualTo("EMAIL_TAKEN");
@@ -98,10 +103,10 @@ class AuthServiceRegisterTest {
     @Test
     void registrationSwitchOffReturnsForbidden() {
         AuthService closed = new AuthService(userRepository, passwordEncoder, jwtService,
-                new AuthProperties(false, "USER"));
+                new AuthProperties(false, "USER"), sessionService);
 
         assertThatThrownBy(() -> closed.register(
-                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", null)))
+                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", null), "127.0.0.1", "junit"))
                 .isInstanceOfSatisfying(BizException.class, e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.FORBIDDEN);
                     assertThat(e.code()).isEqualTo("REGISTRATION_DISABLED");
@@ -115,11 +120,12 @@ class AuthServiceRegisterTest {
         when(passwordEncoder.encode(anyString())).thenReturn("$h$");
         when(userRepository.create(eq("bob"), eq("$h$"), eq("鲍勃"), eq("USER"), eq(false), isNull()))
                 .thenReturn(8L);
-        when(jwtService.createToken(any(User.class))).thenReturn("t");
+        when(sessionService.create(0L, 8L, "127.0.0.1", "junit")).thenReturn("sid-8");
+        when(jwtService.createToken(any(User.class), eq("sid-8"))).thenReturn("t");
         when(userRepository.findById(8L)).thenReturn(Optional.of(
                 new User(8L, 0L, "bob", "$h$", "鲍勃", "USER", "ACTIVE", false, 0)));
 
-        service.register(new RegisterRequest("bob", "Passw0rd!", "鲍勃", "  "));
+        service.register(new RegisterRequest("bob", "Passw0rd!", "鲍勃", "  "), "127.0.0.1", "junit");
 
         ArgumentCaptor<String> email = ArgumentCaptor.forClass(String.class);
         verify(userRepository).create(eq("bob"), eq("$h$"), eq("鲍勃"), eq("USER"), eq(false), email.capture());
@@ -135,11 +141,11 @@ class AuthServiceRegisterTest {
                 .thenThrow(new org.springframework.dao.DuplicateKeyException("uk"));
 
         assertThatThrownBy(() -> service.register(
-                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", null)))
+                new RegisterRequest("alice", "Passw0rd!", "爱丽丝", null), "127.0.0.1", "junit"))
                 .isInstanceOfSatisfying(BizException.class, e -> {
                     assertThat(e.code()).isEqualTo("ACCOUNT_TAKEN");
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                 });
-        verify(jwtService, never()).createToken(any());
+        verify(jwtService, never()).createToken(any(), any());
     }
 }

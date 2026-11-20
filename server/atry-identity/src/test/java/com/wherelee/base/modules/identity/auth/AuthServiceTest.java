@@ -5,6 +5,7 @@ import com.wherelee.base.modules.identity.auth.dto.LoginRequest;
 import com.wherelee.base.modules.identity.auth.dto.LoginResponse;
 import com.wherelee.base.modules.identity.auth.dto.UserInfo;
 import com.wherelee.base.modules.identity.security.JwtService;
+import com.wherelee.base.modules.identity.session.SessionService;
 import com.wherelee.base.modules.identity.user.User;
 import com.wherelee.base.modules.identity.user.UserRepository;
 import com.wherelee.base.modules.platform.common.BizException;
@@ -33,6 +34,7 @@ class AuthServiceTest {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
+    private SessionService sessionService;
     private AuthService service;
 
     private final User activeUser =
@@ -43,16 +45,19 @@ class AuthServiceTest {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
-        service = new AuthService(userRepository, passwordEncoder, jwtService, new AuthProperties(true, "USER"));
+        sessionService = mock(SessionService.class);
+        service = new AuthService(userRepository, passwordEncoder, jwtService,
+                new AuthProperties(true, "USER"), sessionService);
     }
 
     @Test
     void 登录成功返回token与用户信息() {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(activeUser));
         when(passwordEncoder.matches("raw", "$encoded$")).thenReturn(true);
-        when(jwtService.createToken(activeUser)).thenReturn("token-1");
+        when(sessionService.create(0L, 1L, "127.0.0.1", "junit")).thenReturn("sid-1");
+        when(jwtService.createToken(activeUser, "sid-1")).thenReturn("token-1");
 
-        LoginResponse response = service.login(new LoginRequest(" alice ", "raw"));
+        LoginResponse response = service.login(new LoginRequest(" alice ", "raw"), "127.0.0.1", "junit");
 
         assertThat(response.token()).isEqualTo("token-1");
         assertThat(response.mustChangePassword()).isTrue();
@@ -64,12 +69,12 @@ class AuthServiceTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(activeUser));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("alice", "bad")))
+        assertThatThrownBy(() -> service.login(new LoginRequest("alice", "bad"), "127.0.0.1", "junit"))
                 .isInstanceOf(BizException.class)
                 .hasMessage("账号或密码不正确");
 
         when(userRepository.findByUsername("nobody")).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.login(new LoginRequest("nobody", "bad")))
+        assertThatThrownBy(() -> service.login(new LoginRequest("nobody", "bad"), "127.0.0.1", "junit"))
                 .isInstanceOf(BizException.class)
                 .hasMessage("账号或密码不正确");
     }
@@ -79,7 +84,7 @@ class AuthServiceTest {
         User disabled = new User(2L, 0L, "bob", "h", "鲍勃", "USER", "DISABLED", false, 0);
         when(userRepository.findByUsername("bob")).thenReturn(Optional.of(disabled));
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("bob", "raw")))
+        assertThatThrownBy(() -> service.login(new LoginRequest("bob", "raw"), "127.0.0.1", "junit"))
                 .isInstanceOf(BizException.class);
         verify(jwtService, never()).createToken(disabled);
     }

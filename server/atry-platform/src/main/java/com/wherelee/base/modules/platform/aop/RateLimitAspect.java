@@ -17,6 +17,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 
 @Slf4j
@@ -86,6 +90,15 @@ public class RateLimitAspect {
         return joinPoint.proceed();
     }
 
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 不可用", e);
+        }
+    }
+
     private String dimensionKey(RateLimit.Dimension dimension) {
         if (dimension == RateLimit.Dimension.ANONYMOUS) {
             return "anonymous";
@@ -99,7 +112,8 @@ public class RateLimitAspect {
             if (dimension == RateLimit.Dimension.IP) {
                 boolean trustForwarded = securityProperties != null
                         && securityProperties.trustForwardedHeaders();
-                return "ip:" + ClientIps.resolve(attributes.getRequest(), trustForwarded);
+                // Redis 键里不落明文 IP（与登录节流一致）
+                return "ip:" + sha256(ClientIps.resolve(attributes.getRequest(), trustForwarded));
             }
             Object userId = attributes.getRequest().getAttribute("userId");
             return userId == null ? "anonymous" : String.valueOf(userId);

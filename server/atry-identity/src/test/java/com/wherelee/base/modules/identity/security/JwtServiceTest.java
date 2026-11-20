@@ -42,6 +42,16 @@ class JwtServiceTest {
     }
 
     @Test
+    void 签发会话id可取回_无sid时为null() {
+        JwtService service = service(60, "atry", "atry-web");
+        String withSid = service.createToken(user(42L, 7L, 3), "sess-42");
+        assertThat(service.parse(withSid).sessionId()).isEqualTo("sess-42");
+
+        String withoutSid = service.createToken(user(42L, 7L, 3));
+        assertThat(service.parse(withoutSid).sessionId()).isNull();
+    }
+
+    @Test
     void 密钥不足32字节时启动失败() {
         assertThatThrownBy(() -> new JwtService(new JwtProperties("too-short", 60, "atry", "web")))
                 .isInstanceOf(IllegalStateException.class)

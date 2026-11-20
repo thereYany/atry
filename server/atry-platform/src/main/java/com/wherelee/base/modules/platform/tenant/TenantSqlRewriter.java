@@ -20,7 +20,7 @@ public final class TenantSqlRewriter {
             "t_role", "t_permission", "t_role_permission", "t_user_role",
             "t_payment_order", "t_payment_attempt", "t_payment_event", "t_refund",
             "t_payment_outbox",
-            "t_alert_log", "t_admin_audit_log", "t_auth_event");
+            "t_alert_log", "t_admin_audit_log", "t_auth_event", "t_user_session");
 
     private final Set<String> tenantTables;
 

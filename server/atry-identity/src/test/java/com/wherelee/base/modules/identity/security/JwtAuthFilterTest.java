@@ -29,13 +29,15 @@ class JwtAuthFilterTest {
 
     private JwtService jwtService;
     private UserRepository userRepository;
+    private com.wherelee.base.modules.identity.session.SessionService sessionService;
     private JwtAuthFilter filter;
 
     @BeforeEach
     void setUp() {
         jwtService = mock(JwtService.class);
         userRepository = mock(UserRepository.class);
-        filter = new JwtAuthFilter(jwtService, userRepository);
+        sessionService = mock(com.wherelee.base.modules.identity.session.SessionService.class);
+        filter = new JwtAuthFilter(jwtService, userRepository, sessionService);
     }
 
     @AfterEach
