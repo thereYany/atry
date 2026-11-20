@@ -52,7 +52,7 @@ class TenantIsolationIntegrationTest extends IntegrationTestSupport {
                 "SELECT COUNT(*) FROM t_alert_log WHERE alert_type = 'ISO_TEST'"))).isEqualTo(2);
     }
 
-    @org.junit.jupiter.api.Disabled("疑似缺陷：UserRepository/UserAccount 查询的 SELECT 列表包含 tenant_id，"
+    @org.junit.jupiter.api.Disabled("多租户暂不支持（2026-11-20 决策，降级为已知限制）：UserRepository/UserAccount 查询的 SELECT 列表包含 tenant_id，"
             + "TenantSqlRewriter 因 lower.contains(\"tenant_id\") 短路跳过注入，导致登录/鉴权查询不按租户过滤；"
             + "同名账号跨租户会相互串号（t_user 唯一键含 tenant_id 允许同名）")
     @Test
@@ -105,7 +105,7 @@ class TenantIsolationIntegrationTest extends IntegrationTestSupport {
                 .isEqualTo(2);
     }
 
-    @org.junit.jupiter.api.Disabled("疑似缺陷：t_payment_order 唯一键 uk_payment_biz(app_id,biz_type,biz_no) "
+    @org.junit.jupiter.api.Disabled("多租户暂不支持（2026-11-20 决策，降级为已知限制）：t_payment_order 唯一键 uk_payment_biz(app_id,biz_type,biz_no) "
             + "不含 tenant_id，跨租户相同业务单号时后创建方 INSERT 被 ON DUPLICATE KEY 静默忽略，"
             + "导致第二个租户支付单创建后仍不可读取（PaymentFacade 抛 IllegalStateException）")
     @Test

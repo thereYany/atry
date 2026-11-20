@@ -27,8 +27,11 @@ public class MockPaymentGateway implements PaymentGateway {
         if (attempt == null) {
             return new PaymentQueryResult("PENDING", order.amountCents(), null, "尚无支付尝试");
         }
+        // Mock 渠道的尝试状态用 SUCCESS/FAILED 词表，查单服务只认 PAID/FAILED/...；
+        // 这里做词表归一，避免无回调场景下主动查单永远无法结算。
+        String status = "SUCCESS".equals(attempt.providerStatus()) ? "PAID" : attempt.providerStatus();
         return new PaymentQueryResult(
-                attempt.providerStatus(),
+                status,
                 attempt.providerAmountCents(),
                 attempt.providerTradeNo(),
                 null

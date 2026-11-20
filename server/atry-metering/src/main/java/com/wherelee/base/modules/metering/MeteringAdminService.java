@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -62,13 +63,19 @@ public class MeteringAdminService implements MeteringAdminOperations {
     @Transactional
     public InvoiceView generateInvoice(InvoiceCommand command) {
         validateInvoice(command);
-        var existing = billingStore.findInvoiceByPeriod(command.subject(), command.currency(),
-                command.from(), command.to());
+        // 账期列是 DATETIME(3)：先对齐到毫秒再做幂等匹配与落库，
+        // 否则调用方传入纳秒精度 Instant 时第二次生成匹配不到已有账单（触发唯一键异常/重复出账）。
+        Instant from = command.from().truncatedTo(ChronoUnit.MILLIS);
+        Instant to = command.to().truncatedTo(ChronoUnit.MILLIS);
+        if (!from.isBefore(to)) {
+            throw new BizException(HttpStatus.BAD_REQUEST, "账单账期非法");
+        }
+        var existing = billingStore.findInvoiceByPeriod(command.subject(), command.currency(), from, to);
         if (existing.isPresent()) {
             return toView(existing.get());
         }
         List<MeteringBillingStore.ChargeRow> charges = billingStore.findCharges(command.subject(),
-                command.from(), command.to(), command.currency());
+                from, to, command.currency());
         if (charges.isEmpty()) {
             return null;
         }
@@ -76,8 +83,8 @@ public class MeteringAdminService implements MeteringAdminOperations {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         String invoiceNo = "INV-" + Instant.now().toEpochMilli() + "-"
                 + UUID.randomUUID().toString().substring(0, 8);
-        long invoiceId = billingStore.insertInvoice(invoiceNo, command.subject(), command.from(),
-                command.to(), command.currency(), total);
+        long invoiceId = billingStore.insertInvoice(invoiceNo, command.subject(), from,
+                to, command.currency(), total);
         for (MeteringBillingStore.ChargeRow charge : charges) {
             billingStore.insertInvoiceItem(invoiceId, charge.chargeId(), charge.eventId(),
                     charge.meterKey(), charge.quantity(), charge.amount(), charge.currency());

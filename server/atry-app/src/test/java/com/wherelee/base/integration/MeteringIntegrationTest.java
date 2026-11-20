@@ -211,9 +211,6 @@ class MeteringIntegrationTest extends IntegrationTestSupport {
         assertThat(meteringAdmin.queryInvoices(subject, 10)).hasSize(1);
     }
 
-    @org.junit.jupiter.api.Disabled("疑似缺陷：t_metering_invoice 账期列 DATETIME(3) 会截断毫秒以下精度，"
-            + "generateInvoice 用 period_start/period_end 精确匹配做幂等；调用方传纳秒精度 Instant 时"
-            + "第二次生成匹配不到已有账单，触发 uk_invoice_period 唯一键异常（重复出账/500）")
     @Test
     void 账单幂等_纳秒精度账期也应幂等() {
         recordUsage("IT-INV-NS-1", "llm.input_tokens", "1000000", subject, Map.of());

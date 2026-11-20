@@ -169,9 +169,6 @@ class PaymentFlowIntegrationTest extends IntegrationTestSupport {
                 .isEqualTo(1);
     }
 
-    @org.junit.jupiter.api.Disabled("疑似缺陷：MockPaymentGateway.query 原样返回 attempt.provider_status，"
-            + "而 PaymentQueryService 只认 PAID/FAILED/NOT_FOUND/CREATED/PENDING；"
-            + "渠道回报 SUCCESS 时主动查单永远无法结算（无回调域名场景的兜底失效）")
     @Test
     void 主动查单_渠道回报SUCCESS应识别为已支付() {
         long tenant = newTenant();

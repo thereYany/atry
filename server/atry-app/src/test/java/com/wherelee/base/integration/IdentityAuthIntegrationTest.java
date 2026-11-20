@@ -208,7 +208,7 @@ class IdentityAuthIntegrationTest extends IntegrationTestSupport {
                 + "AND NOT EXISTS (SELECT 1 FROM t_role_permission rp WHERE rp.permission_id = t_permission.id)");
     }
 
-    @org.junit.jupiter.api.Disabled("疑似缺陷：公开邀请预览/接受接口没有登录租户，服务层用 TenantContext.current()=0 "
+    @org.junit.jupiter.api.Disabled("多租户暂不支持（2026-11-20 决策，降级为已知限制）：公开邀请预览/接受接口没有登录租户，服务层用 TenantContext.current()=0 "
             + "定位邀请；非 0 租户创建的邀请链接在公开接口永远返回 400，多租户下邀请注册不可用")
     @Test
     void 非默认租户创建的邀请_公开预览应可用() {
