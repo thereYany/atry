@@ -29,7 +29,7 @@ Java 21 · Spring Boot 4.1.2 · MySQL 8（Flyway）· Redis 7 · JdbcTemplate/My
 
 | 项 | 数值 |
 |---|---|
-| 测试 | **488 用例**：单元 + 架构门禁 413（`mvn test`），集成 71（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
+| 测试 | **488 用例**：单元 + 架构门禁 414（`mvn test`），集成 71（`-Pintegration`，4 skip；其中 1 个 Testcontainers 用例无 Docker 时跳过），垂直模板 4 |
 | 覆盖率 | JaCoCo 行 **70.8%** / 分支 67.4%（`atry-llm` 行覆盖 89.6%） |
 | 并发 | 32 线程对余额 10.000000 并发预扣 3.000000：**恰好 3 成功、29 拒绝**，冻结 9.000000，无超卖 |
 | 多实例 | Redis 共享令牌桶：A 实例用满额度后 B 实例立即拒绝；回调 / 充值 / 邀请 / 发件箱并发幂等 |
@@ -129,6 +129,19 @@ P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
 - 测试：单元 413、集成 71（4 skip），新增关闭支付单回调与已支付重复事件用例。
 
 
+## 资金账本与对账（0.9.0，chatry 侧）
+
+- 新增 `t_fund_ledger_account/transaction/entry/meta/check`：资产（清算）、负债（用户额度）、收入、
+  营销费用、期初权益五类账户；每笔交易借贷必须相等，事件键唯一幂等。
+- 记账规则：充值「借 PSP_CLEARING（实付）+ 借 PROMO_EXPENSE（赠送）／贷 CREDIT_LIABILITY（到账）」；
+  消费「借 CREDIT_LIABILITY／贷 REVENUE」；新手赠送「借 PROMO_EXPENSE／贷 CREDIT_LIABILITY」。
+- 历史数据用 `OPENING_EQUITY` 一次性期初回填（额度余额 + 已支付订单），不从凭空余额开始。
+- 消费分录在对话结算后即时补记，另有 30s sweep 兜底；日终对账快照落到 `t_fund_ledger_check`。
+- 管理端 `/api/admin/fund-ledger/summary`（权限 `admin:finance:view`）：额度负债 vs 计量余额、
+  清算 vs 已付订单、借贷不平数。
+- 实测：负债 222.990262 = 计量余额 222.990262；清算 139.86 = 已付订单 139.86；借贷不平 0 笔。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -139,7 +152,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.8.0-exec.jar
+java -jar atry-app/target/atry-app-0.9.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。
