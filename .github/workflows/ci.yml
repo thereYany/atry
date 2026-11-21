@@ -79,7 +79,7 @@ jobs:
       - name: Build backend image
         run: docker build -t atry:${{ github.sha }} -f server/Dockerfile server
       - name: Trivy image scan (CRITICAL, fixed only)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db
           TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db
