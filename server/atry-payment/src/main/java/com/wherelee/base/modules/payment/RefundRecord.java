@@ -6,6 +6,7 @@ public record RefundRecord(
         Long id,
         String refundNo,
         Long orderId,
+        String paymentNo,
         long amountCents,
         String status,
         int attemptCount,

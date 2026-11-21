@@ -142,6 +142,18 @@ P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
 - 实测：负债 222.990262 = 计量余额 222.990262；清算 139.86 = 已付订单 139.86；借贷不平 0 笔。
 
 
+## 退款与售后逆向（0.10.0）
+
+- `RefundOperations` 契约 + `RefundService` 实现：金额不可超退（已退+本次 ≤ 支付单金额）、
+  `refundNo` 幂等、渠道 `out_request_no` 复用退款单号；支持部分退款（V201 去掉「一单只能退一次」唯一键）。
+- 失败退避重试：`FAILED` + `next_retry_at`（指数退避），`RefundRetryJob` 跨租户重试，
+  超过上限留在 FAILED 供人工处理，不静默丢单。
+- 成功后写 `REFUND_SUCCEEDED` 发件箱事件，业务侧消费完成额度扣回/订单状态/资金分录；
+  全额退款时支付单转 `REFUNDED`。
+- 新增 `MeteringAdminOperations.adjust`：允许负向调整且可配置「允许扣到 0」，供退款扣回额度复用。
+- 测试：单元 421、集成 71；退款用例覆盖超退拒绝、未支付拒绝、幂等、成功事件、失败重试。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -152,7 +164,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.9.0-exec.jar
+java -jar atry-app/target/atry-app-0.10.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

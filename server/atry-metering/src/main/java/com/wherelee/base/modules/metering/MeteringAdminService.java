@@ -1,5 +1,6 @@
 package com.wherelee.base.modules.metering;
 
+import com.wherelee.base.modules.contracts.metering.AdjustCommand;
 import com.wherelee.base.modules.contracts.metering.BalanceView;
 import com.wherelee.base.modules.contracts.metering.InvoiceCommand;
 import com.wherelee.base.modules.contracts.metering.InvoiceItemView;
@@ -57,6 +58,44 @@ public class MeteringAdminService implements MeteringAdminOperations {
         store.insertLedger(account.id(), "CREDIT", command.amount(), command.currency(),
                 "RECHARGE", command.bizNo(), balanceAfter);
         return new BalanceView(command.subject(), balanceAfter, account.frozen(), command.currency());
+    }
+
+    @Override
+    @Transactional
+    public BalanceView adjust(AdjustCommand command) {
+        if (command == null || command.subject() == null || command.amount() == null
+                || command.amount().signum() == 0 || command.currency() == null
+                || command.currency().isBlank() || command.bizNo() == null || command.bizNo().isBlank()) {
+            throw BizException.badRequest("额度调整参数不完整");
+        }
+        SubjectRef subject = command.subject();
+        if (billingStore.ledgerExists(command.bizNo())) {
+            return balanceOf(subject, command.currency());
+        }
+        MeteringStore.AccountRow account = store.findAccount(subject, command.currency(), true)
+                .orElseThrow(() -> new BizException(HttpStatus.NOT_FOUND, "账户不存在"));
+        BigDecimal delta = command.amount();
+        BigDecimal applied = delta;
+        if (delta.signum() < 0) {
+            BigDecimal available = account.balance().subtract(account.frozen());
+            BigDecimal required = delta.negate();
+            if (required.compareTo(available) > 0) {
+                if (!command.allowNegative()) {
+                    throw new BizException(HttpStatus.PAYMENT_REQUIRED, "可用额度不足以扣减");
+                }
+                applied = available.negate();
+            }
+        }
+        if (applied.signum() == 0) {
+            return new BalanceView(subject, account.balance(), account.frozen(), command.currency());
+        }
+        BigDecimal balanceAfter = account.balance().add(applied);
+        billingStore.addBalance(account.id(), applied);
+        String bizType = command.bizType() == null || command.bizType().isBlank()
+                ? "ADJUST" : command.bizType().trim();
+        store.insertLedger(account.id(), applied.signum() > 0 ? "CREDIT" : "DEBIT",
+                applied.abs(), command.currency(), bizType, command.bizNo(), balanceAfter);
+        return new BalanceView(subject, balanceAfter, account.frozen(), command.currency());
     }
 
     @Override

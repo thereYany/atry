@@ -62,7 +62,7 @@ class AlipayPaymentGatewayTest {
     }
 
     private static RefundRecord refund() {
-        return new RefundRecord(1L, "RF-1", null, 1000, "PROCESSING", 0, null, null,
+        return new RefundRecord(1L, "RF-1", null, "P1", 1000, "PROCESSING", 0, null, null,
                 "退款", 7L, LocalDateTime.now(), null, null);
     }
 

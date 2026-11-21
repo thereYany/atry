@@ -17,6 +17,7 @@ public final class PermissionCodes {
     public static final String ADMIN_RECON_MANAGE = "admin:recon:manage";
     public static final String ADMIN_AUDIT_VIEW = "admin:audit:view";
     public static final String ADMIN_FINANCE_VIEW = "admin:finance:view";
+    public static final String ADMIN_REFUND_MANAGE = "admin:refund:manage";
     public static final String PAYMENT_MOCK = "payment:mock";
 
     private PermissionCodes() {

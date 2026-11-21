@@ -51,7 +51,8 @@ public class PaymentRepository {
     private static final RowMapper<RefundRecord> REFUND_MAPPER = (rs, rowNum) -> new RefundRecord(
             rs.getLong("id"),
             rs.getString("refund_no"),
-            rs.getLong("order_id"),
+            (Long) rs.getObject("order_id"),
+            rs.getString("payment_no"),
             rs.getLong("amount_cents"),
             rs.getString("status"),
             rs.getInt("attempt_count"),
@@ -225,27 +226,58 @@ public class PaymentRepository {
                 """, EVENT_MAPPER, orderId);
     }
 
+    public Optional<RefundRecord> findRefundByNo(String refundNo) {
+        return jdbc.query("""
+                SELECT * FROM t_refund WHERE refund_no = ?
+                """, REFUND_MAPPER, refundNo).stream().findFirst();
+    }
+
+    public List<RefundRecord> listRefundsByPayment(String paymentNo) {
+        return jdbc.query("""
+                SELECT * FROM t_refund WHERE payment_no = ? ORDER BY id
+                """, REFUND_MAPPER, paymentNo);
+    }
+
+    public Optional<RefundRecord> findRefundById(Long id) {
+        return jdbc.query("""
+                SELECT * FROM t_refund WHERE id = ?
+                """, REFUND_MAPPER, id).stream().findFirst();
+    }
+
+    public long sumRefundedCents(String paymentNo) {
+        Long sum = jdbc.queryForObject("""
+                SELECT COALESCE(SUM(amount_cents), 0) FROM t_refund
+                WHERE payment_no = ? AND status IN ('PROCESSING', 'SUCCEEDED')
+                """, Long.class, paymentNo);
+        return sum == null ? 0L : sum;
+    }
+
     public Optional<RefundRecord> findRefundByOrder(Long orderId) {
         return jdbc.query("""
                 SELECT * FROM t_refund WHERE order_id = ?
                 """, REFUND_MAPPER, orderId).stream().findFirst();
     }
 
-    public Long createRefund(String refundNo, Long orderId, long amountCents,
+    public Long createRefund(String refundNo, Long orderId, String paymentNo, long amountCents,
                              String reason, Long requestedBy) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO t_refund
-                        (tenant_id, refund_no, order_id, amount_cents, status, reason, requested_by)
-                    VALUES (?, ?, ?, ?, 'PROCESSING', ?, ?)
+                        (tenant_id, refund_no, order_id, payment_no, amount_cents, status, reason, requested_by)
+                    VALUES (?, ?, ?, ?, ?, 'PROCESSING', ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             statement.setLong(1, TenantContext.current());
             statement.setString(2, refundNo);
-            statement.setLong(3, orderId);
-            statement.setLong(4, amountCents);
-            statement.setString(5, reason);
-            statement.setLong(6, requestedBy);
+            if (orderId == null) {
+                statement.setNull(3, java.sql.Types.BIGINT);
+            } else {
+                statement.setLong(3, orderId);
+            }
+            statement.setString(4, paymentNo);
+            statement.setLong(5, amountCents);
+            statement.setString(6, reason);
+            statement.setLong(7, requestedBy);
             return statement;
         }, keyHolder);
         Number key = keyHolder.getKey();
