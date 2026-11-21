@@ -9,7 +9,7 @@ jobs:
   data-boundary:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -57,7 +57,7 @@ jobs:
       COS_SECRET_ID: ci-dummy
       COS_SECRET_KEY: ci-dummy
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build backend image
         run: docker build -t atry:${{ github.sha }} -f server/Dockerfile server
       - name: Trivy image scan (CRITICAL, fixed only)
