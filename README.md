@@ -169,6 +169,22 @@ Mock 不再是「一个确认按钮」，而是一个可控的假 PSP：
 - 集成测试 `MockScenarioIntegrationTest` 8 个用例覆盖全部场景。
 
 
+## 支付可观测与运行手册（0.12.0）
+
+- **运营指标**（chatry `PaymentOpsMetrics`，每 30s 刷新）：`chatry_payment_stuck`（PAYING 超时）、
+  `chatry_refund_pending`、`chatry_refund_exhausted`、`chatry_paid_after_close`、`chatry_outbox_pending`、
+  `chatry_ledger_unbalanced`、`chatry_ledger_liability_diff`、`chatry_ledger_cash_diff`。
+- **看板**：`atry overview` 增加退款积压、卡单/关单后待退款、账本健康、发件箱积压 4 个面板。
+- **告警**：新增 7 条支付运营告警（账本不平/账实差异为 critical；卡单、退款积压、重试耗尽、
+  关单后待处理、发件箱积压为 warning）。
+- **运行手册**：`chatry/docs/runbook-payment.md`，覆盖卡单、重复回调/金额错、关单后支付、退款积压、
+  账实差异、发件箱积压与故障注入；明确「只允许冲正、不改余额」。
+- **演示脚本**：`chatry/docs/demo-payment-5min.md`，6 幕演示 + 面试问答卡片。
+- 修复：chatry 之前关闭了主动查单任务（`PAYMENT_QUERY_ENABLED:false`），导致过期支付单永不关闭、
+  查单兜底失效；已改为默认开启。同时修正查单对「渠道金额不一致」的误报（此前每轮打「已结算」），
+  现在记 `payment_query_rejected` 指标与明确告警日志。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -179,7 +195,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.11.0-exec.jar
+java -jar atry-app/target/atry-app-0.12.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

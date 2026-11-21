@@ -31,6 +31,7 @@ public class PaymentQueryService {
     private final PaymentOutboxRepository outboxRepository;
     private final PaymentProperties properties;
     private final TraceSpans traceSpans;
+    private final PaymentMetrics metrics;
 
     public PaymentQueryService(PaymentOrderRepository paymentOrderRepository,
                                PaymentRepository paymentRepository,
@@ -38,7 +39,8 @@ public class PaymentQueryService {
                                PaymentConfirmationService confirmationService,
                                PaymentOutboxRepository outboxRepository,
                                PaymentProperties properties,
-                               TraceSpans traceSpans) {
+                               TraceSpans traceSpans,
+                               PaymentMetrics metrics) {
         this.paymentOrderRepository = paymentOrderRepository;
         this.paymentRepository = paymentRepository;
         this.paymentGateway = paymentGateway;
@@ -46,6 +48,7 @@ public class PaymentQueryService {
         this.outboxRepository = outboxRepository;
         this.properties = properties;
         this.traceSpans = traceSpans;
+        this.metrics = metrics;
     }
 
     /** 扫描一批到期的支付中支付单，返回处理条数。 */
@@ -76,14 +79,23 @@ public class PaymentQueryService {
 
         if ("PAID".equals(result.status())) {
             String tradeNo = result.tradeNo() != null ? result.tradeNo() : payment.providerTradeNo();
-            confirmationService.accept(new PaymentNotification(
-                    paymentGateway.channel(),
-                    "QUERY:" + payment.paymentNo() + ":" + tradeNo,
-                    payment.bizNo(),
-                    "PAYMENT_SUCCESS",
-                    result.amountCents(),
-                    tradeNo,
-                    null), payment.paymentNo());
+            PaymentConfirmationService.ConfirmationResult confirmed = confirmationService.accept(
+                    new PaymentNotification(
+                            paymentGateway.channel(),
+                            "QUERY:" + payment.paymentNo() + ":" + tradeNo,
+                            payment.bizNo(),
+                            "PAYMENT_SUCCESS",
+                            result.amountCents(),
+                            tradeNo,
+                            null), payment.paymentNo());
+            if (!confirmed.success()) {
+                // 渠道说已支付但确认被拒（典型：金额不一致）：不能算结算成功，
+                // 记录指标与告警，保留支付单等人工处理，别每轮刷一行「已结算」。
+                metrics.queryRejected();
+                log.warn("payment_query_rejected paymentNo={} tradeNo={} amountCents={} reason={}",
+                        payment.paymentNo(), tradeNo, result.amountCents(), confirmed.message());
+                return true;
+            }
             log.info("payment_query_settled paymentNo={} tradeNo={} amountCents={}",
                     payment.paymentNo(), tradeNo, result.amountCents());
             return true;

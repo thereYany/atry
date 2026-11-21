@@ -22,6 +22,7 @@ public class PaymentMetrics {
     public void fulfillmentSucceeded() { inc("payment.order.fulfilled"); }
     public void refundSucceeded() { inc("payment.refund.succeeded"); }
     public void refundFailed() { inc("payment.refund.failed"); }
+    public void queryRejected() { inc("payment.query.rejected"); }
 
     private void inc(String name) {
         registry.counter(name).increment();

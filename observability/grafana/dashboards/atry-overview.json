@@ -547,6 +547,179 @@
       ],
       "title": "Method p95 (atry.method)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "chatry_refund_pending",
+          "legendFormat": "处理中/待重试",
+          "refId": "A"
+        },
+        {
+          "expr": "chatry_refund_exhausted",
+          "legendFormat": "重试耗尽",
+          "refId": "B"
+        }
+      ],
+      "title": "退款积压 / 重试耗尽",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
+      "id": 15,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "chatry_payment_stuck",
+          "legendFormat": "PAYING 超时",
+          "refId": "A"
+        },
+        {
+          "expr": "chatry_paid_after_close",
+          "legendFormat": "关单后待退款",
+          "refId": "B"
+        }
+      ],
+      "title": "卡单 / 关单后待退款",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 52
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "chatry_ledger_unbalanced",
+          "legendFormat": "借贷不平交易",
+          "refId": "A"
+        },
+        {
+          "expr": "chatry_ledger_liability_diff",
+          "legendFormat": "负债−计量差异",
+          "refId": "B"
+        },
+        {
+          "expr": "chatry_ledger_cash_diff",
+          "legendFormat": "清算−已付差异",
+          "refId": "C"
+        }
+      ],
+      "title": "账本健康（不平 / 差异）",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 52
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "chatry_outbox_pending",
+          "legendFormat": "待投递事件",
+          "refId": "A"
+        },
+        {
+          "expr": "payment_outbox_dead_total",
+          "legendFormat": "死信累计",
+          "refId": "B"
+        }
+      ],
+      "title": "支付发件箱积压",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",

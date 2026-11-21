@@ -48,7 +48,8 @@ class PaymentQueryServiceTest {
         PaymentProperties properties = new PaymentProperties("mock", true, "s", 15, 0,
                 20, 15000, 10000, 5, 30);
         service = new PaymentQueryService(orderRepository, paymentRepository, gateway,
-                confirmationService, outboxRepository, properties, TraceSpans.noop());
+                confirmationService, outboxRepository, properties, TraceSpans.noop(),
+                org.mockito.Mockito.mock(PaymentMetrics.class));
     }
 
     @AfterEach
