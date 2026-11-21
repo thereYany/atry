@@ -160,6 +160,16 @@ public class PaymentRepository {
                 """, providerStatus, providerAmountCents, scenario, attemptId);
     }
 
+    /** 写渠道侧事实（Mock 收银台用）：provider_status / 金额 / 渠道流水号。 */
+    public void updateProviderFact(Long attemptId, String status, long amountCents, String tradeNo) {
+        jdbc.update("""
+                UPDATE t_payment_attempt
+                SET provider_status = ?, provider_amount_cents = ?, provider_trade_no = ?,
+                    status = ?, finished_at = CURRENT_TIMESTAMP(3)
+                WHERE id = ?
+                """, status, amountCents, tradeNo, status, attemptId);
+    }
+
     public void markAttemptSuccess(Long attemptId) {
         jdbc.update("""
                 UPDATE t_payment_attempt

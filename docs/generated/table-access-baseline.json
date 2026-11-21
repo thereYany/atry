@@ -1,6 +1,6 @@
 {
   "summary": {
-    "table_count": 32,
+    "table_count": 33,
     "cross_module_tables": [],
     "multi_table_class_count": 6,
     "multi_table_classes": [
@@ -26,8 +26,8 @@
         "platform"
       ],
       "module_count": 1,
-      "class_count": 1,
-      "statements": 1,
+      "class_count": 2,
+      "statements": 3,
       "multi_table_classes": []
     },
     "t_alert_log": {
@@ -50,8 +50,8 @@
         "identity"
       ],
       "module_count": 1,
-      "class_count": 1,
-      "statements": 1,
+      "class_count": 3,
+      "statements": 3,
       "multi_table_classes": []
     },
     "t_channel_bill": {
@@ -264,6 +264,18 @@
       "module_count": 1,
       "class_count": 1,
       "statements": 3,
+      "multi_table_classes": []
+    },
+    "t_payment_mock_scenario": {
+      "modules": [
+        "payment"
+      ],
+      "effective_modules": [
+        "payment"
+      ],
+      "module_count": 1,
+      "class_count": 1,
+      "statements": 2,
       "multi_table_classes": []
     },
     "t_payment_order": {

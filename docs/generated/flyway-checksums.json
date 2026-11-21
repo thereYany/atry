@@ -7,6 +7,7 @@
     "V104__identity_audit_permission": "91f71b61a11521a1afa65e59ce641746050ac592ca9546a955834a97fe3e1b2d",
     "V200__payment_schema": "e8024d1ff1511ca955f3dac678b989a10ceeef5e468ce54820282b75f688bec9",
     "V201__refund_partial": "467d616310228096ac93320fcbcc477b2072494a1fc91a344be084381cae8ba5",
+    "V202__payment_mock_scenario": "d825583e9a9fb6771aa2c98b14aa5dc081b2e6be69f1c9cb37dc93e656e0a3e4",
     "V300__platform_schema": "c1d03e39d8e52874b774288fd2f7b7e083d8f24748bfa215d93f79e9dc65b3da",
     "V301__platform_audit_created_index": "3310ad72ce5e95ed2958869815932b9a706499cad2f4db4b77bb21f76c3186f1",
     "V400__llm_schema": "8628a1121bb7964b8f100e981360e026d4ce8fc961965382baca4492d44f840c",

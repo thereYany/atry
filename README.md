@@ -154,6 +154,21 @@ P4 会补「版本段分配 + 乱序禁止」的校验脚本与 CI 门禁。
 - 测试：单元 421、集成 71；退款用例覆盖超退拒绝、未支付拒绝、幂等、成功事件、失败重试。
 
 
+## Mock 渠道工程化（0.11.0）
+
+Mock 不再是「一个确认按钮」，而是一个可控的假 PSP：
+
+- **真实回调链路**：`MockCashierService` 生成渠道流水 → 用 `MockSignatureService`（HMAC-SHA256）签名
+  → 回调入口验签 → `PaymentCallbackService.acceptVerified`。签名错、金额错会被真实拒绝。
+- **故障剧本**（`t_payment_mock_scenario`，V202）：`SUCCESS` / `FAILED` / `DUPLICATE` / `DELAYED` /
+  `AMOUNT_MISMATCH` / `BAD_SIGNATURE` / `AFTER_CLOSE` / `QUERY_ONLY`（只写渠道事实不回调，验证查单兜底）。
+- **开发台接口**：`POST /api/mock/payments/{paymentNo}/scenario` 设剧本、
+  `POST .../simulate` 触发、`GET /api/mock/payments/scenarios` 列场景；
+  `@ConditionalOnProperty(mock-enabled=true)` + 非 prod 双重保护，生产不注册。
+- **退款剧本**：`POST /api/mock/payments/refunds/{refundNo}/fail-once` 让退款失败一次，驱动退避重试验证。
+- 集成测试 `MockScenarioIntegrationTest` 8 个用例覆盖全部场景。
+
+
 ## 快速开始
 
 前置：JDK 21、Maven 3.9、MySQL 8、Redis 7。
@@ -164,7 +179,7 @@ mvn -B -DskipTests install
 
 DB_URL='jdbc:mysql://127.0.0.1:3306/atry_dev?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true' \
 DB_USER=root DB_PASSWORD=root REDIS_HOST=127.0.0.1 \
-java -jar atry-app/target/atry-app-0.10.0-exec.jar
+java -jar atry-app/target/atry-app-0.11.0-exec.jar
 ```
 
 默认端口 8084（管理端 9091），Flyway 启动时自动建表并创建管理员 `admin`（密码见启动日志或 `SEED_ADMIN_PASSWORD`，首次登录强制改密）。默认使用 **mock LLM provider**，无需任何外部 key 即可跑通全链路。

@@ -142,6 +142,12 @@ public class RefundService implements RefundOperations {
                 refund.refundNo(), attempts, nextRetryAt, message);
     }
 
+    /** 剧本：让指定退款下一次渠道调用失败（仅 Mock 测试用）。 */
+    public void failNextAttempt(String refundNo, String message) {
+        paymentRepository.findRefundByNo(refundNo)
+                .ifPresent(refund -> fail(refund, message));
+    }
+
     /** 重试到期退款（由 @Scheduled 任务调用）。 */
     @Transactional
     public int retryDue() {
